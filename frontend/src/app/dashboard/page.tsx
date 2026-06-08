@@ -551,7 +551,7 @@ function DashboardContent() {
         <div className="flex items-center gap-4">
           <Button 
             onClick={() => setShowImportModal(true)}
-            className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer font-semibold text-xs h-9"
+            className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer font-bold text-xs h-11 px-4"
           >
             <Plus className="w-4 h-4" /> Import Repository
           </Button>
@@ -1346,7 +1346,7 @@ function DashboardContent() {
       {/* GitHub Repo Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl p-6 shadow-xl flex flex-col gap-6 max-h-[85vh]">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-[95vw] md:max-w-2xl p-6 shadow-xl flex flex-col gap-6 max-h-[85vh]">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Import Repository</h3>
@@ -1473,7 +1473,7 @@ function DashboardContent() {
               <Button 
                 onClick={handleDirectUrlAnalyze} 
                 disabled={analyzingRepoId !== null || !importUrl.trim()}
-                className="bg-primary hover:bg-primary/95 text-white cursor-pointer font-bold text-xs h-10 w-full rounded-xl mt-2 flex items-center justify-center gap-1.5"
+                className="bg-primary hover:bg-primary/95 text-white cursor-pointer font-bold text-xs h-11 w-full rounded-xl mt-2 flex items-center justify-center gap-1.5"
               >
                 {analyzingRepoId === 'custom' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1571,7 +1571,7 @@ function DashboardContent() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-card border border-rose-200 rounded-2xl w-full max-w-md p-6 shadow-xl flex flex-col gap-5 text-left font-sans">
+          <div className="bg-card border border-rose-200 rounded-2xl w-full max-w-[95vw] sm:max-w-md p-6 shadow-xl flex flex-col gap-5 text-left font-sans">
             <div>
               <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
                 <Trash2 className="w-5 h-5 text-rose-600" /> Delete Repository?
@@ -1602,7 +1602,7 @@ function DashboardContent() {
       {/* Rename Display Name Modal */}
       {showRenameModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <form onSubmit={handleRenameRepository} className="bg-card border border-border rounded-2xl w-full max-w-md p-6 shadow-xl flex flex-col gap-5 text-left font-sans">
+          <form onSubmit={handleRenameRepository} className="bg-card border border-border rounded-2xl w-full max-w-[95vw] sm:max-w-md p-6 shadow-xl flex flex-col gap-5 text-left font-sans">
             <div>
               <h3 className="text-base font-bold text-foreground mb-1 flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-primary" /> Rename Custom Display Name
