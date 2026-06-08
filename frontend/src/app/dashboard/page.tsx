@@ -307,9 +307,13 @@ function DashboardContent() {
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
+      const providerToken = data.session?.provider_token;
       const headers: any = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
+      }
+      if (providerToken) {
+        headers["X-Github-Token"] = providerToken;
       }
       
       let githubIdToSend: number;

@@ -57,9 +57,13 @@ export function ScanStatusTracker({ repoId, onComplete }: ScanStatusTrackerProps
       // Find the repository details first
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+      const providerToken = sessionData.session?.provider_token;
       const headers: any = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
+      }
+      if (providerToken) {
+        headers["X-Github-Token"] = providerToken;
       }
       
       const reposRes = await fetch(getApiUrl("/api/repos"), { headers });

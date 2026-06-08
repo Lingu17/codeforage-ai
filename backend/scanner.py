@@ -382,7 +382,7 @@ def update_job_status(supabase, job_id, status, progress, current_step, error_me
         
     supabase.table("repository_scans").update(update_data).eq("id", job_id).execute()
 
-def scan_and_analyze_repository(repo_url: str, repository_id: str, job_id: str, token: str = None):
+def scan_and_analyze_repository(repo_url: str, repository_id: str, job_id: str, token: str = None, github_token: str = None):
     """
     Executes the async scanning, embedding, and analysis process.
     Updates the repository_scans table at every milestone.
@@ -393,10 +393,28 @@ def scan_and_analyze_repository(repo_url: str, repository_id: str, job_id: str, 
     try:
         # STEP 1: Cloning (Cloning status)
         update_job_status(supabase, job_id, "cloning", 15, "Cloning repository...")
+        
+        clone_url = repo_url
+        if github_token:
+            # Inject OAuth token for cloning private repository safely
+            if "github.com" in clone_url:
+                clone_url = clone_url.replace("https://github.com/", f"https://x-access-token:{github_token}@github.com/")
+                clone_url = clone_url.replace("http://github.com/", f"https://x-access-token:{github_token}@github.com/")
+        
         print(f"Cloning {repo_url} into {temp_dir}")
         
         # Clone shallow for fast retrieval
-        subprocess.run(["git", "clone", "--depth", "1", repo_url, temp_dir], check=True, capture_output=True)
+        try:
+            subprocess.run(["git", "clone", "--depth", "1", clone_url, temp_dir], check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            err_msg = str(err)
+            if github_token:
+                err_msg = err_msg.replace(github_token, "MASKED_TOKEN")
+            stderr_decoded = err.stderr.decode('utf-8', errors='ignore') if err.stderr else ""
+            if github_token:
+                stderr_decoded = stderr_decoded.replace(github_token, "MASKED_TOKEN")
+            raise Exception(f"Git clone failed: {err_msg}. Details: {stderr_decoded}")
+
         update_job_status(supabase, job_id, "scanning", 35, "Scanning files...")
         
         scanned_files = []
