@@ -2,7 +2,7 @@
 
 > AI-Powered Software Engineering Copilot for Repository Analysis, Architecture Visualization, Security Audits, and Intelligent Codebase Chat.
 
-![CodeForge AI Banner](https://via.placeholder.com/1200x400?text=CodeForge+AI)
+https://codeforage-ai.vercel.app/
 
 ## 🌟 Overview
 
