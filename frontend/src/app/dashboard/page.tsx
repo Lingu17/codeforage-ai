@@ -194,7 +194,10 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const url = getApiUrl(`/api/repos/github?username=${name}`) + (providerToken ? `&token=${providerToken}` : "");
+      if (providerToken) {
+        headers["X-Github-Token"] = providerToken;
+      }
+      const url = getApiUrl(`/api/repos/github?username=${name}`);
       const res = await fetch(url, { headers });
       if (res.ok) {
         const data = await res.json();
