@@ -95,20 +95,24 @@ async def get_github_repositories(username: Optional[str] = None, token: Optiona
     # Sanitize inputs
     if token in ("undefined", "null", ""):
         token = None
-    if username in ("undefined", "null", ""):
+    if username in ("undefined", "null", "", "Developer", "guest_developer"):
         username = None
 
-    headers = {"Accept": "application/vnd.github.v3+json"}
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "CodeForgeAI"
+    }
     if token:
         headers["Authorization"] = f"token {token}"
         
-    # If username is missing but we have a token, resolve it via GET /user
-    if not username and token:
+        # Always attempt to resolve/verify username dynamically using the token if it is provided
         async with httpx.AsyncClient() as client:
             try:
                 user_res = await client.get("https://api.github.com/user", headers=headers)
                 if user_res.status_code == 200:
-                    username = user_res.json().get("login")
+                    resolved_username = user_res.json().get("login")
+                    if resolved_username:
+                        username = resolved_username
             except Exception as e:
                 print(f"Failed to fetch username from github token: {e}")
 
@@ -126,7 +130,10 @@ async def get_github_repositories(username: Optional[str] = None, token: Optiona
             if r.status_code != 200:
                 # Fallback to public repos if auth fails
                 if token:
-                    public_headers = {"Accept": "application/vnd.github.v3+json"}
+                    public_headers = {
+                        "Accept": "application/vnd.github.v3+json",
+                        "User-Agent": "CodeForgeAI"
+                    }
                     r = await client.get(f"https://api.github.com/users/{username}/repos?sort=updated&per_page=100", headers=public_headers)
                 if r.status_code != 200:
                     raise HTTPException(status_code=r.status_code, detail=f"GitHub API returned error: {r.text}")

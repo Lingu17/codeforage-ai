@@ -147,7 +147,7 @@ export default function LandingPage() {
             <Button onClick={handleDemoMode} variant="ghost" className="text-zinc-555 hover:text-zinc-900 cursor-pointer text-xs font-sans hover:bg-zinc-100/50">
               Demo
             </Button>
-            <Button onClick={handleLogin} className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans shadow-sm">
+            <Button onClick={handleLogin} className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans shadow-sm h-11 px-5">
               <GithubIcon className="w-4 h-4" /> Sign In
             </Button>
           </div>
@@ -201,10 +201,10 @@ export default function LandingPage() {
               Contact
             </a>
             <div className="flex gap-3 pt-2">
-              <Button onClick={() => { setShowMobileMenu(false); handleDemoMode(); }} variant="outline" className="flex-1 text-zinc-650 hover:text-zinc-900 cursor-pointer text-xs font-sans h-10 rounded-lg">
+              <Button onClick={() => { setShowMobileMenu(false); handleDemoMode(); }} variant="outline" className="flex-1 text-zinc-650 hover:text-zinc-900 cursor-pointer text-xs font-sans h-11 rounded-lg">
                 Demo
               </Button>
-              <Button onClick={() => { setShowMobileMenu(false); handleLogin(); }} className="flex-1 bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans h-10 rounded-lg shadow-sm">
+              <Button onClick={() => { setShowMobileMenu(false); handleLogin(); }} className="flex-1 bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans h-11 rounded-lg shadow-sm">
                 <GithubIcon className="w-4 h-4" /> Sign In
               </Button>
             </div>
@@ -707,7 +707,7 @@ export default function LandingPage() {
         </section>
 
         {/* Section: Contact Form */}
-        <section id="contact" className="mt-40 w-full max-w-xl border-t border-border pt-20">
+        <section id="contact" className="mt-40 w-full max-w-xl border-t border-border pt-20 px-4 sm:px-6">
           <div className="text-center mb-10">
             <Badge variant="outline" className="mb-4 border-rose-200 text-rose-600 bg-rose-50">Contact Us</Badge>
             <h2 className="text-3xl font-bold tracking-tight text-zinc-900 font-sans">Get in Touch</h2>
@@ -817,7 +817,7 @@ export default function LandingPage() {
       {/* GitHub Account Chooser Modal */}
       {showAccountChooser && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-white border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col gap-6 text-left animate-in zoom-in-95 duration-200">
+          <div className="bg-white border border-border rounded-2xl w-full max-w-[95vw] sm:max-w-sm p-6 shadow-2xl flex flex-col gap-6 text-left animate-in zoom-in-95 duration-200">
             <div>
               <h3 className="text-base font-bold text-zinc-900 mb-2 flex items-center gap-2">
                 <GithubIcon className="w-5 h-5 text-zinc-700" /> Connect to GitHub

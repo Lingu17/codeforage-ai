@@ -204,7 +204,7 @@ export default function ContactPage() {
               <Button 
                 type="submit" 
                 disabled={submitStatus === "sending"}
-                className="bg-primary hover:bg-primary/90 text-white h-9 text-xs font-semibold cursor-pointer w-full mt-2 shadow-sm rounded-lg"
+                className="bg-primary hover:bg-primary/90 text-white h-11 text-xs font-semibold cursor-pointer w-full mt-2 shadow-sm rounded-lg"
               >
                 {submitStatus === "sending" ? "Sending..." : "Submit Message"}
               </Button>

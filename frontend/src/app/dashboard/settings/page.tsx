@@ -108,7 +108,7 @@ export default function SettingsPage() {
   const email = user?.email || "hello@codeforgeai.dev";
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground min-h-screen font-sans p-8 gap-8">
+    <div className="flex flex-col h-full bg-background text-foreground min-h-screen font-sans p-4 md:p-8 gap-8">
       <header className="flex items-center justify-between border-b border-border pb-6 shrink-0">
         <div className="flex items-center gap-3">
           <Button
@@ -131,7 +131,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("account")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
               activeTab === "account" ? "bg-primary/5 text-primary border-primary/10 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
             }`}
           >
@@ -140,7 +140,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("workspace")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
               activeTab === "workspace" ? "bg-primary/5 text-primary border-primary/10 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
             }`}
           >
@@ -149,7 +149,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("integrations")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
               activeTab === "integrations" ? "bg-primary/5 text-primary border-primary/10 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
             }`}
           >
@@ -158,7 +158,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
               activeTab === "security" ? "bg-primary/5 text-primary border-primary/10 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
             }`}
           >
@@ -167,7 +167,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("billing")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold transition-colors shrink-0 w-auto lg:w-full text-left border ${
               activeTab === "billing" ? "bg-primary/5 text-primary border-primary/10 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 border-transparent"
             }`}
           >

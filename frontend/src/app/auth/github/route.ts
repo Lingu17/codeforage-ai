@@ -17,6 +17,9 @@ export async function GET(request: Request) {
     options: {
       redirectTo: `${origin}/auth/callback`,
       scopes: 'repo',
+      queryParams: {
+        prompt: 'select_account'
+      }
     },
   })
 
