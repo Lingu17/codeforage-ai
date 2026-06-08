@@ -95,7 +95,7 @@ async def get_github_repositories(username: Optional[str] = None, token: Optiona
     # Sanitize inputs
     if token in ("undefined", "null", ""):
         token = None
-    if username in ("undefined", "null", "", "Developer", "guest_developer"):
+    if username in ("undefined", "null", ""):
         username = None
 
     headers = {
@@ -105,16 +105,17 @@ async def get_github_repositories(username: Optional[str] = None, token: Optiona
     if token:
         headers["Authorization"] = f"token {token}"
         
-        # Always attempt to resolve/verify username dynamically using the token if it is provided
-        async with httpx.AsyncClient() as client:
-            try:
-                user_res = await client.get("https://api.github.com/user", headers=headers)
-                if user_res.status_code == 200:
-                    resolved_username = user_res.json().get("login")
-                    if resolved_username:
-                        username = resolved_username
-            except Exception as e:
-                print(f"Failed to fetch username from github token: {e}")
+        # If username is missing or a placeholder, resolve it dynamically using the token
+        if not username or username in ("Developer", "guest_developer"):
+            async with httpx.AsyncClient() as client:
+                try:
+                    user_res = await client.get("https://api.github.com/user", headers=headers)
+                    if user_res.status_code == 200:
+                        resolved_username = user_res.json().get("login")
+                        if resolved_username:
+                            username = resolved_username
+                except Exception as e:
+                    print(f"Failed to fetch username from github token: {e}")
 
     if not username:
         raise HTTPException(status_code=400, detail="GitHub username is required or could not be resolved.")
