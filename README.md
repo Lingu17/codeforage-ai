@@ -1,112 +1,203 @@
 # 🚀 CodeForge AI
 
-> AI-Powered Software Engineering Copilot for Repository Analysis, Architecture Visualization, Security Audits, and Intelligent Codebase Chat.
+<p align="center">
+  <img src="./assets/banner.png" alt="CodeForge AI Banner" width="100%" />
+</p>
 
-https://codeforage-ai.vercel.app/
+<p align="center">
+  <strong>AI-Powered Software Engineering Copilot for Repository Analysis, Architecture Visualization, Security Audits, and Intelligent Codebase Chat.</strong>
+</p>
 
-## 🌟 Overview
+<p align="center">
+  <a href="https://codeforage-ai.vercel.app/">🌐 Live Demo</a> •
+  <a href="https://github.com/Lingu17">GitHub</a> •
+  <a href="https://linkedin.com/in/lingraj-malipatil">LinkedIn</a>
+</p>
 
-CodeForge AI is an intelligent software engineering platform that helps developers understand, analyze, and improve codebases using AI.
+<p align="center">
 
-Simply connect a GitHub repository and CodeForge AI will:
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--5-purple)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-* 📂 Analyze repository structure
-* 🏗 Generate architecture maps
-* 💬 Enable AI-powered codebase chat
-* 🔍 Detect security vulnerabilities
-* 📊 Calculate project health scores
-* 📝 Generate pull request reviews
-* 🧠 Create semantic code embeddings
-* ⚡ Surface technical debt and risks
-
-Built for developers, startups, engineering teams, and technical leaders.
-
----
-
-## ✨ Features
-
-### Repository Analysis
-
-* GitHub OAuth integration
-* Public and private repository support
-* Automated repository cloning
-* Source code indexing
-* Dependency discovery
-
-### Architecture Visualization
-
-* Interactive architecture graphs
-* Module relationship mapping
-* Service dependency visualization
-* Code structure analysis
-
-### AI Codebase Chat
-
-Ask questions such as:
-
-* "How does authentication work?"
-* "Where is payment logic implemented?"
-* "Explain the API architecture."
-* "Find security issues in this repository."
-
-### Security & Technical Debt
-
-* Vulnerability detection
-* Dependency analysis
-* Code smell detection
-* Technical debt scoring
-* Security recommendations
-
-### Health Score
-
-Evaluate repository quality using:
-
-* Maintainability
-* Documentation quality
-* Dependency health
-* Security posture
-* Architecture quality
-
-### Pull Request Reviews
-
-* AI-generated review suggestions
-* Best practice recommendations
-* Refactoring opportunities
-* Security issue identification
+</p>
 
 ---
 
-## 🏗 System Architecture
+# ✨ Overview
+
+CodeForge AI is an intelligent software engineering platform that helps developers understand, analyze, secure, and improve repositories using AI.
+
+Simply connect a GitHub repository and CodeForge AI automatically:
+
+✅ Analyzes repository structure
+
+✅ Generates architecture maps
+
+✅ Creates semantic code embeddings
+
+✅ Enables AI-powered repository chat
+
+✅ Detects vulnerabilities
+
+✅ Scores project health
+
+✅ Reviews pull requests
+
+✅ Surfaces technical debt and risks
+
+Built for:
+
+* Developers
+* Engineering Teams
+* CTOs
+* Startups
+* Open Source Maintainers
+
+---
+
+# 📸 Product Preview
+
+## Landing Page
+
+![Landing Page](./assets/landing-page.png)
+
+---
+
+## Dashboard
+
+![Dashboard](./assets/dashboard.png)
+
+---
+
+## Repository Analysis
+
+![Repository Analysis](./assets/repository-analysis.png)
+
+---
+
+## Architecture Visualization
+
+![Architecture Graph](./assets/architecture-graph.png)
+
+---
+
+## Security Audit
+
+![Security Audit](./assets/security-audit.png)
+
+---
+
+## AI Codebase Chat
+
+![AI Chat](./assets/code-chat.png)
+
+---
+
+# 🎥 Demo
+
+![Demo GIF](./assets/demo.gif)
+
+---
+
+# 🏗 System Architecture
 
 ```text
 GitHub Repository
         │
         ▼
-Repository Ingestion
+ Repository Ingestion
         │
         ▼
-Code Parsing & Chunking
+ Code Parsing & Chunking
         │
         ▼
-Embedding Generation
+ Embedding Generation
         │
         ▼
-Vector Database
+ Vector Database
         │
         ▼
-AI Analysis Engine
-        │
- ┌──────┼─────────┐
- ▼      ▼         ▼
-Chat  Security  Health
-Engine Analysis Score
+ AI Analysis Engine
+ ┌──────┼────────────┬─────────────┐
+ ▼      ▼            ▼             ▼
+Chat Security Health Architecture
+Engine Audit Score Visualization
 ```
 
 ---
 
-## 🛠 Tech Stack
+# 🔥 Features
 
-### Frontend
+## Repository Analysis
+
+* GitHub OAuth Integration
+* Public Repository Scanning
+* Private Repository Scanning
+* Repository Cloning
+* Dependency Detection
+* Source Code Indexing
+
+---
+
+## Architecture Visualization
+
+* Interactive Graphs
+* Dependency Mapping
+* Service Relationships
+* Module Connections
+* Architecture Risk Detection
+
+---
+
+## AI Codebase Chat
+
+Ask:
+
+* How does authentication work?
+* Explain application architecture.
+* Where is payment processing implemented?
+* Find security issues.
+* Explain API flow.
+
+---
+
+## Security Audits
+
+* Vulnerability Detection
+* Secret Scanning
+* Dependency Risks
+* Security Recommendations
+* OWASP Checks
+
+---
+
+## Repository Health Score
+
+Calculated using:
+
+* Documentation Quality
+* Security Posture
+* Dependency Health
+* Maintainability
+* Architecture Quality
+
+---
+
+## AI Pull Request Reviews
+
+* Code Quality Suggestions
+* Refactoring Advice
+* Security Warnings
+* Best Practice Recommendations
+
+---
+
+# 🛠 Tech Stack
+
+## Frontend
 
 * Next.js
 * React
@@ -115,65 +206,66 @@ Engine Analysis Score
 * Framer Motion
 * ShadCN UI
 
-### Backend
+## Backend
 
 * FastAPI
 * Python
 * AsyncIO
 * GitPython
 
-### AI
+## AI Layer
 
 * OpenAI GPT Models
 * OpenAI Embeddings
 
-### Database
+## Database
 
 * Supabase
 * PostgreSQL
 * pgvector
 
-### Infrastructure
+## Infrastructure
 
-* Vercel (Frontend)
-* Render (Backend)
+* Vercel
+* Render
 * GitHub OAuth
 
 ---
 
-## 📁 Project Structure
+# 📂 Project Structure
 
 ```text
 codeforge-ai/
 
-├── frontend/
-│   ├── app/
-│   ├── components/
-│   ├── hooks/
-│   ├── lib/
-│   └── types/
-│
-├── backend/
-│   ├── api/
-│   ├── services/
-│   ├── repositories/
-│   ├── embeddings/
-│   ├── scanners/
-│   ├── security/
-│   └── workers/
-│
-├── database/
-│   ├── migrations/
-│   └── schema.sql/
-│
-└── docs/
+frontend/
+├── app/
+├── components/
+├── hooks/
+├── lib/
+└── types/
+
+backend/
+├── api/
+├── services/
+├── embeddings/
+├── repositories/
+├── scanners/
+├── security/
+└── workers/
+
+database/
+├── migrations/
+└── schema.sql
+
+docs/
+assets/
 ```
 
 ---
 
-## ⚙️ Environment Variables
+# ⚙ Environment Variables
 
-### Frontend (.env.local)
+## Frontend
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
@@ -183,7 +275,7 @@ NEXT_PUBLIC_GITHUB_CLIENT_ID=
 NEXT_PUBLIC_WEB3FORMS_KEY=
 ```
 
-### Backend (.env)
+## Backend
 
 ```env
 OPENAI_API_KEY=
@@ -196,17 +288,17 @@ FRONTEND_URL=
 
 ---
 
-## 🚀 Installation
+# 🚀 Quick Start
 
-### Clone Repository
+## Clone
 
 ```bash
-git clone https://github.com/yourusername/codeforge-ai.git
+git clone https://github.com/Lingu17/codeforge-ai.git
 
 cd codeforge-ai
 ```
 
-### Frontend
+## Frontend
 
 ```bash
 cd frontend
@@ -216,13 +308,13 @@ npm install
 npm run dev
 ```
 
-Frontend:
+Runs on:
 
 ```text
 http://localhost:3000
 ```
 
-### Backend
+## Backend
 
 ```bash
 cd backend
@@ -232,7 +324,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Backend:
+Runs on:
 
 ```text
 http://localhost:8000
@@ -240,22 +332,21 @@ http://localhost:8000
 
 ---
 
-## 🔐 GitHub OAuth Setup
+# 🔐 GitHub OAuth Setup
 
-1. Create a GitHub OAuth App.
-2. Configure:
+Homepage URL
 
 ```text
-Homepage URL
 https://yourdomain.com
 ```
 
+Callback URL
+
 ```text
-Authorization Callback URL
 https://yourdomain.com/auth/github/callback
 ```
 
-3. Add:
+Add:
 
 ```env
 GITHUB_CLIENT_ID=
@@ -264,21 +355,17 @@ GITHUB_CLIENT_SECRET=
 
 ---
 
-## 📧 Contact Form (Web3Forms)
+# 📧 Contact Form Setup (Web3Forms)
 
-CodeForge AI uses Web3Forms for contact submissions.
+Create an account at Web3Forms.
 
-### Setup
-
-1. Create a form at Web3Forms.
-2. Copy Access Key.
-3. Add:
+Add:
 
 ```env
-NEXT_PUBLIC_WEB3FORMS_KEY=your_key
+NEXT_PUBLIC_WEB3FORMS_KEY=
 ```
 
-4. Submit directly to:
+Submit requests to:
 
 ```text
 https://api.web3forms.com/submit
@@ -286,82 +373,81 @@ https://api.web3forms.com/submit
 
 ---
 
-## 📊 Roadmap
+# 🗺 Roadmap
 
-### Current
+## Current
 
 * Repository Analysis
 * Architecture Maps
-* Codebase Chat
+* AI Chat
 * Security Audits
 * Health Scores
 * PR Reviews
 
-### Upcoming
+## Upcoming
 
 * Team Workspaces
-* Repository Monitoring
 * Slack Integration
 * Jira Integration
-* CI/CD Insights
 * AI Refactoring Assistant
 * Multi-Repository Search
 * Enterprise SSO
+* CI/CD Insights
+* Continuous Monitoring
 
 ---
 
-## 🤝 Contributing
+# 🤝 Contributing
 
-Contributions are welcome.
-
-1. Fork repository
-2. Create feature branch
+1. Fork Repository
+2. Create Feature Branch
 
 ```bash
-git checkout -b feature/my-feature
+git checkout -b feature/new-feature
 ```
 
-3. Commit changes
+3. Commit Changes
 
 ```bash
-git commit -m "Add feature"
+git commit -m "Add new feature"
 ```
 
-4. Push branch
+4. Push Branch
 
 ```bash
-git push origin feature/my-feature
+git push origin feature/new-feature
 ```
 
 5. Open Pull Request
 
 ---
 
-## 📄 License
+# 👨‍💻 Author
 
-This project is licensed under the MIT License.
+## Lingraj Malipatil
 
----
+GitHub:
+https://github.com/Lingu17
 
-## 👨‍💻 Author
-
-**Lingraj Malipatil**
-
-* GitHub: https://github.com/Lingu17
-* LinkedIn: https://linkedin.com/in/lingraj-malipatil
+LinkedIn:
+https://linkedin.com/in/lingraj-malipatil
 
 ---
 
-## ⭐ Support
+# ⭐ Support
 
-If you find CodeForge AI useful:
+If CodeForge AI helps you:
 
-⭐ Star the repository
+⭐ Star the Repository
 
-🐛 Report issues
+🐛 Report Issues
 
-🚀 Share with other developers
+🚀 Share with Developers
+
+💡 Contribute New Features
 
 ---
 
+<p align="center">
 Built with ❤️ by Lingraj Malipatil
+</p>
