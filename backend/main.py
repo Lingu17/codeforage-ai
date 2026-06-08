@@ -84,6 +84,24 @@ class PRReviewRequest(BaseModel):
 def health_check():
     return {"status": "ok", "message": "CodeForge AI Backend is running."}
 
+@app.get("/api/debug-env")
+def debug_env():
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_ANON_KEY")
+    return {
+        "supabase_url": {
+            "length": len(url) if url else 0,
+            "prefix": url[:12] if url else "",
+            "suffix": url[-5:] if url else ""
+        },
+        "supabase_key": {
+            "length": len(key) if key else 0,
+            "prefix": key[:15] if key else "",
+            "suffix": key[-5:] if key else ""
+        }
+    }
+
+
 # 1. Fetch scanned repositories
 @app.get("/api/repos")
 def get_scanned_repositories(user_id: str = Depends(get_authenticated_user_id), token: Optional[str] = Depends(get_auth_token)):
