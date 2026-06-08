@@ -25,7 +25,10 @@ def get_authenticated_user_id(token: Optional[str] = Depends(get_auth_token)) ->
             return user_res.user.id
         raise HTTPException(status_code=401, detail="Invalid session token")
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)} ({type(e).__name__})")
+
 
 
 app = FastAPI(
