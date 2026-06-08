@@ -240,7 +240,7 @@ export default function ThreeBackground() {
   }, [mouse]);
 
   return (
-    <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden bg-[#F8FAFC]">
+    <div className="fixed inset-0 -z-10 w-full h-full pointer-events-none overflow-hidden bg-[#F8FAFC]">
       {/* Radial soft indigo bloom */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-b from-indigo-500/10 to-transparent rounded-full blur-[130px] pointer-events-none" />
       
