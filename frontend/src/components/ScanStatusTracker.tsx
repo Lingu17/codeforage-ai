@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ export function ScanStatusTracker({ repoId, onComplete }: ScanStatusTrackerProps
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<boolean>(false);
   const supabase = createClient();
+  const lastJobStateRef = useRef<{ id?: string; status: string; progress: number; started_at?: string } | null>(null);
 
   const fetchStatus = async () => {
     try {
@@ -31,11 +32,39 @@ export function ScanStatusTracker({ repoId, onComplete }: ScanStatusTrackerProps
       const res = await fetch(getApiUrl(`/api/repos/${repoId}/status`), { headers });
       if (res.ok) {
         const data = await res.json();
-        setStatus(data.status || "queued");
-        setProgress(data.progress ?? 100);
+        const newId = data.id;
+        const newStatus = data.status || "queued";
+        const newProgress = data.progress ?? 100;
+        const newStartedAt = data.started_at;
+
+        // Guard against regressions
+        if (lastJobStateRef.current) {
+          const current = lastJobStateRef.current;
+          if (current.id && newId && current.id !== newId) {
+            const currentStart = new Date(current.started_at || 0).getTime();
+            const newStart = new Date(newStartedAt || 0).getTime();
+            if (newStart < currentStart) {
+              // Ignore stale older job status update
+              return;
+            }
+          } else if (current.id === newId || (!current.id && !newId)) {
+            // Same job
+            if (current.status === "completed" && newStatus !== "completed") {
+              return;
+            }
+            if (newProgress < current.progress) {
+              return;
+            }
+          }
+        }
+
+        // Update ref and local state
+        lastJobStateRef.current = { id: newId, status: newStatus, progress: newProgress, started_at: newStartedAt };
+        setStatus(newStatus);
+        setProgress(newProgress);
         setErrorMessage(data.error_message || null);
 
-        if (data.status === "completed") {
+        if (newStatus === "completed") {
           onComplete();
         }
       }
