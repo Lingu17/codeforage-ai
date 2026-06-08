@@ -119,7 +119,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 relative overflow-x-hidden font-sans pb-16">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 relative isolate overflow-x-hidden font-sans pb-16">
       <ThreeBackground />
       
       {/* Background soft blurs */}
@@ -150,7 +150,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-6 pt-36 pb-20 flex flex-col items-center">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-36 pb-20 flex flex-col items-center">
         <motion.div
           variants={containerVariants}
           initial="hidden"
