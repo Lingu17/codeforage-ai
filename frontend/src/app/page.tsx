@@ -88,12 +88,16 @@ export default function LandingPage() {
     e.preventDefault();
     setSubmitStatus("sending");
     try {
-      const res = await fetch(getApiUrl("/api/contact"), {
+      const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          access_key: "db913c2f-0a48-4b1c-b8c1-c10beb3c4199",
+          ...formData
+        })
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success) {
         setSubmitStatus("success");
         setFormData({ name: "", email: "", subject: "", message: "" });
       } else {
