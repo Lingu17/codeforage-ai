@@ -39,7 +39,11 @@ allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
-    "http://127.0.0.1:3001"
+    "http://127.0.0.1:3001",
+    "https://codeforage-ai.vercel.app",
+    "https://codeforge-ai.vercel.app",
+    "https://codeforageai.vercel.app",
+    "https://codeforgeai.vercel.app",
 ]
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
 if allowed_origins_env:
@@ -75,6 +79,7 @@ class PRReviewRequest(BaseModel):
     diff_content: str
     repository_id: Optional[str] = None
 
+@app.get("/health", response_model=HealthResponse)
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():
     return {"status": "ok", "message": "CodeForge AI Backend is running."}
@@ -91,7 +96,13 @@ def get_scanned_repositories(user_id: str = Depends(get_authenticated_user_id), 
 
 # 2. Fetch user's GitHub repositories directly using their github username/token
 @app.get("/api/repos/github")
-async def get_github_repositories(username: Optional[str] = None, token: Optional[str] = None):
+async def get_github_repositories(
+    username: Optional[str] = None, 
+    token: Optional[str] = None,
+    x_github_token: Optional[str] = Header(None)
+):
+    if x_github_token:
+        token = x_github_token
     # Sanitize inputs
     if token in ("undefined", "null", ""):
         token = None
