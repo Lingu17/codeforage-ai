@@ -25,9 +25,7 @@ def get_authenticated_user_id(token: Optional[str] = Depends(get_auth_token)) ->
             return user_res.user.id
         raise HTTPException(status_code=401, detail="Invalid session token")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)} ({type(e).__name__})")
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 
 
@@ -87,22 +85,7 @@ class PRReviewRequest(BaseModel):
 def health_check():
     return {"status": "ok", "message": "CodeForge AI Backend is running."}
 
-@app.get("/api/debug-env")
-def debug_env():
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_ANON_KEY")
-    return {
-        "supabase_url": {
-            "length": len(url) if url else 0,
-            "prefix": url[:12] if url else "",
-            "suffix": url[-5:] if url else ""
-        },
-        "supabase_key": {
-            "length": len(key) if key else 0,
-            "prefix": key[:15] if key else "",
-            "suffix": key[-5:] if key else ""
-        }
-    }
+# (Removed debug-env endpoint)
 
 
 # 1. Fetch scanned repositories
@@ -176,7 +159,13 @@ async def get_github_repositories(
 
 # 3. Create Scan Job & Run Scan Asynchronously
 @app.post("/api/repos/analyze")
-def analyze_repository(req: AnalyzeRepoRequest, background_tasks: BackgroundTasks, user_id: str = Depends(get_authenticated_user_id), token: Optional[str] = Depends(get_auth_token)):
+def analyze_repository(
+    req: AnalyzeRepoRequest, 
+    background_tasks: BackgroundTasks, 
+    user_id: str = Depends(get_authenticated_user_id), 
+    token: Optional[str] = Depends(get_auth_token),
+    x_github_token: Optional[str] = Header(None)
+):
     try:
         supabase = get_supabase_client(token)
         
@@ -215,8 +204,8 @@ def analyze_repository(req: AnalyzeRepoRequest, background_tasks: BackgroundTask
         }).execute()
         job_id = job.data[0]["id"]
         
-        # 4. Trigger background task
-        background_tasks.add_task(scan_and_analyze_repository, req.repo_url, repo_id, job_id, token)
+        # 4. Trigger background task with the GitHub OAuth token for private repository access
+        background_tasks.add_task(scan_and_analyze_repository, req.repo_url, repo_id, job_id, token, x_github_token)
         
         return {
             "repository_id": repo_id,
