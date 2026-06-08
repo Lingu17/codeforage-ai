@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, ArrowLeft, MessageSquare, Send, Plus, 
-  FileCode, Check, ShieldAlert, Sparkles, Terminal, X
+  FileCode, Check, ShieldAlert, Sparkles, Terminal, X, Menu
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getApiUrl } from "@/utils/api";
 
 function ChatPageContent() {
   const router = useRouter();
@@ -26,6 +27,7 @@ function ChatPageContent() {
   
   const [inputMessage, setInputMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,7 +87,7 @@ function ChatPageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/chat/sessions`, { headers });
+      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/chat/sessions`), { headers });
       if (res.ok) {
         const data = await res.json();
         setSessions(data);
@@ -112,7 +114,7 @@ function ChatPageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/chat/sessions/${sessionId}/messages`, { headers });
+      const res = await fetch(getApiUrl(`/api/chat/sessions/${sessionId}/messages`), { headers });
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -153,7 +155,7 @@ function ChatPageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/chat`, {
+      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/chat`), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -211,8 +213,8 @@ function ChatPageContent() {
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen">
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="h-16 flex items-center justify-between px-4 sm:px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -221,17 +223,28 @@ function ChatPageContent() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-2 font-semibold text-lg">
-            <MessageSquare className="w-5 h-5 text-primary" />
+
+          {/* Mobile Sessions Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowSessionsDrawer(true)}
+            className="md:hidden p-1.5 border border-[#E5E7EB] hover:bg-slate-50 text-zinc-650 hover:text-zinc-900 rounded transition-colors cursor-pointer"
+            aria-label="View Conversations"
+          >
+            <Menu className="w-4.5 h-4.5" />
+          </button>
+
+          <div className="flex items-center gap-2 font-semibold text-sm sm:text-lg">
+            <MessageSquare className="w-4.5 h-4.5 text-primary" />
             <span>Codebase Chat</span>
           </div>
         </div>
         
         <Button 
           onClick={handleStartNewSession}
-          className="bg-primary hover:bg-primary/95 text-white text-xs gap-1.5 cursor-pointer font-semibold shadow-xs"
+          className="bg-primary hover:bg-primary/95 text-white text-xs gap-1.5 cursor-pointer font-semibold shadow-xs h-9 px-3"
         >
-          <Plus className="w-4 h-4" /> New Conversation
+          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New Conversation</span>
         </Button>
       </header>
 
@@ -392,7 +405,7 @@ function ChatPageContent() {
                 placeholder="Ask a question about the codebase (e.g. 'Where is the main API setup?')"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                className="flex-1 bg-slate-50 border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white text-zinc-900 placeholder:text-zinc-400"
+                className="flex-1 bg-slate-55 border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white text-zinc-900 placeholder:text-zinc-400"
                 disabled={sending}
               />
               <Button 
@@ -406,6 +419,47 @@ function ChatPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Conversations Drawer Overlay */}
+      {showSessionsDrawer && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden flex justify-start animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setShowSessionsDrawer(false)} />
+          <div className="relative w-64 h-full border-r border-[#E5E7EB] bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-250">
+            <div className="p-4 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">Conversations</span>
+              <button 
+                type="button"
+                onClick={() => setShowSessionsDrawer(false)} 
+                className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors border border-[#E5E7EB] cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+              {sessions.length === 0 ? (
+                <p className="text-xs text-[#6B7280] text-center py-6 italic font-sans">No chats started.</p>
+              ) : (
+                sessions.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setCurrentSessionId(s.id);
+                      setShowSessionsDrawer(false);
+                    }}
+                    className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition-all truncate border cursor-pointer ${
+                      currentSessionId === s.id 
+                        ? "bg-slate-50 text-primary border-primary/20 shadow-xs animate-in fade-in" 
+                        : "text-slate-600 hover:text-zinc-900 hover:bg-slate-50 border-transparent"
+                    }`}
+                  >
+                    {s.title}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

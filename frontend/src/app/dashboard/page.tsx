@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getApiUrl } from "@/utils/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -160,7 +161,7 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch("http://127.0.0.1:8000/api/repos", { headers });
+      const res = await fetch(getApiUrl("/api/repos"), { headers });
       if (res.ok) {
         const data = await res.json();
         setScannedRepos(data);
@@ -187,7 +188,7 @@ function DashboardContent() {
     setLoadingGithubRepos(true);
     setGithubLoadError(false);
     try {
-      const url = `http://127.0.0.1:8000/api/repos/github?username=${name}` + (providerToken ? `&token=${providerToken}` : "");
+      const url = getApiUrl(`/api/repos/github?username=${name}`) + (providerToken ? `&token=${providerToken}` : "");
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -216,7 +217,7 @@ function DashboardContent() {
           if (token) {
             headers["Authorization"] = `Bearer ${token}`;
           }
-          const res = await fetch(`http://127.0.0.1:8000/api/repos/${repo.id}/status`, { headers });
+          const res = await fetch(getApiUrl(`/api/repos/${repo.id}/status`), { headers });
           if (res.ok) {
             const statusData = await res.json();
             setJobStatuses(prev => ({
@@ -278,7 +279,7 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${repoId}/summary`, { headers });
+      const res = await fetch(getApiUrl(`/api/repos/${repoId}/summary`), { headers });
       if (res.ok) {
         const data = await res.json();
         setRepoSummary(data);
@@ -311,7 +312,7 @@ function DashboardContent() {
         githubIdToSend = Number(repo.id);
       }
 
-      const response = await fetch("http://127.0.0.1:8000/api/repos/analyze", {
+      const response = await fetch(getApiUrl("/api/repos/analyze"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -377,7 +378,7 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const response = await fetch(`http://127.0.0.1:8000/api/repos/${repoId}`, {
+      const response = await fetch(getApiUrl(`/api/repos/${repoId}`), {
         method: "DELETE",
         headers
       });
@@ -414,7 +415,7 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const response = await fetch(`http://127.0.0.1:8000/api/repos/${showRenameModal.id}`, {
+      const response = await fetch(getApiUrl(`/api/repos/${showRenameModal.id}`), {
         method: "PATCH",
         headers,
         body: JSON.stringify({ display_name: newDisplayName })
@@ -540,7 +541,7 @@ function DashboardContent() {
     <div className="flex flex-col h-full bg-background text-foreground min-h-screen relative">
       
       {/* Top Header */}
-      <header className="h-16 flex items-center justify-between px-8 border-b border-border bg-card/85 backdrop-blur-md z-10 shrink-0">
+      <header className="h-auto md:h-16 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 border-b border-border bg-card/85 backdrop-blur-md z-10 shrink-0 gap-3">
         <div className="flex flex-col">
           <h1 className="text-sm font-semibold tracking-tight text-foreground">Welcome, {username}</h1>
           <span className="text-[10px] text-muted-foreground font-mono">
@@ -558,7 +559,7 @@ function DashboardContent() {
       </header>
  
       {/* Main Container */}
-      <div className="p-8 flex-1 overflow-y-auto flex flex-col gap-8">
+      <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col gap-8">
         
         {/* Dynamic Analytics Widget Banner */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -566,7 +567,7 @@ function DashboardContent() {
           <AnalyticsCard title="Architecture Maps" value={`${totalReposCount > 0 ? 1 : 0} Generated`} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Parsed</span>} />
           <AnalyticsCard title="Files Indexed" value={globalStats.totalFiles} trend={<span className="text-[10px] text-muted-foreground font-mono">Total Chunks</span>} />
           <AnalyticsCard title="Security Findings" value={`${globalStats.criticalIssues} Open`} trend={<span className="text-[10px] text-muted-foreground font-mono">Real-time</span>} />
-          <AnalyticsCard title="PR Reviews" value={`${globalStats.aiConversations} Completed`} trend={<span className="text-[10px] text-muted-foreground font-mono">Sessions</span>} />
+          <AnalyticsCard className="col-span-2 md:col-span-1" title="PR Reviews" value={`${globalStats.aiConversations} Completed`} trend={<span className="text-[10px] text-muted-foreground font-mono">Sessions</span>} />
         </div>
  
         {/* Dashboard Content Grid */}
@@ -1730,9 +1731,9 @@ function DashboardContent() {
   );
 }
  
-function AnalyticsCard({ title, value, trend }: { title: string; value: string | number; trend?: React.ReactNode }) {
+function AnalyticsCard({ title, value, trend, className }: { title: string; value: string | number; trend?: React.ReactNode; className?: string }) {
   return (
-    <Card className="bg-card border-border p-4 flex flex-col justify-between h-20 text-left relative overflow-hidden shadow-sm">
+    <Card className={`bg-card border-border p-4 flex flex-col justify-between h-20 text-left relative overflow-hidden shadow-sm ${className || ""}`}>
       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{title}</span>
       <div className="flex justify-between items-baseline mt-1">
         <span className="text-lg font-bold font-mono text-foreground leading-none">{value}</span>

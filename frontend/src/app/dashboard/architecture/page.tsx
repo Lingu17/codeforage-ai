@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, ArrowLeft, Layers, RefreshCw, FileText, Search, X, Copy, Check, 
-  MessageSquare, AlertTriangle, Code2, ShieldAlert
+  MessageSquare, AlertTriangle, Code2, ShieldAlert, Menu
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ScanStatusTracker } from "@/components/ScanStatusTracker";
+import { getApiUrl } from "@/utils/api";
 
 // Custom node component displaying language-specific file icons
 function CodeNode({ data, selected }: any) {
@@ -94,6 +95,7 @@ function ArchitecturePageContent() {
   const [showFileDrawer, setShowFileDrawer] = useState(false);
   const [loadingFileDetails, setLoadingFileDetails] = useState(false);
   const [copiedPath, setCopiedPath] = useState(false);
+  const [showOverviewDrawer, setShowOverviewDrawer] = useState(false);
  
   useEffect(() => {
     const queryId = searchParams.get("repo_id");
@@ -131,7 +133,7 @@ function ArchitecturePageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/status`, { headers });
+      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/status`), { headers });
       if (res.ok) {
         const data = await res.json();
         if (data.status === "completed") {
@@ -169,7 +171,7 @@ function ArchitecturePageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/architecture`, { headers });
+      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/architecture`), { headers });
       if (res.ok) {
         const data = await res.json();
         
@@ -495,8 +497,8 @@ function ArchitecturePageContent() {
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen relative overflow-hidden">
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="h-16 flex items-center justify-between px-4 sm:px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -505,8 +507,19 @@ function ArchitecturePageContent() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-2 font-semibold text-lg">
-            <Layers className="w-5 h-5 text-primary" />
+
+          {/* Mobile Overview Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowOverviewDrawer(true)}
+            className="md:hidden p-1.5 border border-[#E5E7EB] hover:bg-slate-55 text-zinc-650 hover:text-zinc-900 rounded transition-colors cursor-pointer"
+            aria-label="View Graph Details"
+          >
+            <Menu className="w-4.5 h-4.5" />
+          </button>
+
+          <div className="flex items-center gap-2 font-semibold text-sm sm:text-lg">
+            <Layers className="w-4.5 h-4.5 text-primary" />
             <span>Architecture Intelligence</span>
           </div>
         </div>
@@ -514,9 +527,9 @@ function ArchitecturePageContent() {
           variant="outline" 
           size="sm" 
           onClick={fetchArchitecture}
-          className="border-[#E5E7EB] hover:bg-slate-50 text-xs gap-1.5 cursor-pointer font-semibold"
+          className="border-[#E5E7EB] hover:bg-slate-50 text-xs gap-1.5 cursor-pointer font-semibold h-9 px-3"
         >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh Graph
+          <RefreshCw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Refresh Graph</span>
         </Button>
       </header>
 
@@ -524,7 +537,7 @@ function ArchitecturePageContent() {
       <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden bg-[#F8FAFC]">
         
         {/* Left Side: Summary, Search, Legend */}
-        <div className="w-full md:w-80 bg-white border-b md:border-b-0 md:border-r border-[#E5E7EB] p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
+        <div className="w-full md:w-80 bg-white border-b md:border-b-0 md:border-r border-[#E5E7EB] p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0 hidden md:flex">
           
           {/* Search Node filter box */}
           <div className="flex flex-col gap-2">
@@ -882,6 +895,85 @@ function ArchitecturePageContent() {
                 <span className="text-xs text-[#6B7280]">Unable to resolve file details.</span>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Graph Overview Sidebar Drawer Overlay */}
+      {showOverviewDrawer && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden flex justify-start animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setShowOverviewDrawer(false)} />
+          <div className="relative w-72 h-full border-r border-[#E5E7EB] bg-white shadow-2xl flex flex-col p-6 overflow-y-auto text-left gap-6 animate-in slide-in-from-left duration-250">
+            <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-4 shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">Graph Console</span>
+              <button 
+                type="button"
+                onClick={() => setShowOverviewDrawer(false)} 
+                className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors border border-[#E5E7EB] cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+            
+            {/* Search Node filter box */}
+            <div className="flex flex-col gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#6B7280]">Search Nodes</h3>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                <input 
+                  type="text"
+                  placeholder="Filter files (e.g. index.ts)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-55 border border-[#E5E7EB] rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white text-zinc-900"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111827]"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#6B7280] mb-2.5">Graph Overview</h3>
+              <p className="text-xs text-slate-655 leading-relaxed font-sans bg-[#F8FAFC] p-3.5 rounded-xl border border-[#E5E7EB]">
+                {summary}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#6B7280] mb-1">Graph Legend</h3>
+              <div className="flex flex-col gap-2.5 bg-[#F8FAFC] p-4 rounded-xl border border-[#E5E7EB]">
+                <div className="flex items-center gap-2.5 text-xs">
+                  <div className="w-3.5 h-3.5 rounded bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  </div>
+                  <span className="font-semibold">TypeScript (.ts/.tsx)</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-xs">
+                  <div className="w-3.5 h-3.5 rounded bg-amber-55 border border-amber-200 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  </div>
+                  <span className="font-semibold">JavaScript (.js/.jsx)</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-xs">
+                  <div className="w-3.5 h-3.5 rounded bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <span className="font-semibold">Python (.py)</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-xs">
+                  <div className="w-3.5 h-3.5 rounded bg-rose-50 border border-rose-200 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  </div>
+                  <span className="font-semibold">Config / Meta (.json/.yaml)</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

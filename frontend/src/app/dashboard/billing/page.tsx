@@ -11,6 +11,7 @@ import {
   CreditCard, Check, ArrowLeft,
   Zap, Building2, User
 } from "lucide-react";
+import { getApiUrl } from "@/utils/api";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function BillingPage() {
           }
         });
         try {
-          const res = await fetch("http://127.0.0.1:8000/api/repos");
+          const res = await fetch(getApiUrl("/api/repos"));
           if (res.ok) {
             const data = await res.json();
             setReposCount(data.length || 0);
@@ -55,7 +56,7 @@ export default function BillingPage() {
           headers["Authorization"] = `Bearer ${token}`;
         }
         try {
-          const res = await fetch("http://127.0.0.1:8000/api/repos", { headers });
+          const res = await fetch(getApiUrl("/api/repos"), { headers });
           if (res.ok) {
             const data = await res.json();
             setReposCount(data.length || 0);

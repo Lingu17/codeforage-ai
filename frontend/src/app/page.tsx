@@ -8,13 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Code2, Network, ShieldAlert, Activity, Layers, Sparkles, 
-  Check, Heart, Mail, HelpCircle, 
-  Server, Cpu, Database, FileText, MessageSquare, GitPullRequest, Settings
+  Check, Mail, HelpCircle, 
+  Server, Cpu, Database, FileText, MessageSquare, GitPullRequest, Settings,
+  Menu, X
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import ThreeBackground from "@/components/ThreeBackground";
+import { getApiUrl } from "@/utils/api";
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -63,10 +65,11 @@ export default function LandingPage() {
   // Contact Form State
   const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
   const [submitStatus, setSubmitStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [activeFaq, setActiveFaq] = useState<number | null>(0);
 
   const [showAccountChooser, setShowAccountChooser] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const handleLogin = () => {
     window.location.href = "/auth/github";
@@ -85,7 +88,7 @@ export default function LandingPage() {
     e.preventDefault();
     setSubmitStatus("sending");
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/contact", {
+      const res = await fetch(getApiUrl("/api/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
@@ -129,24 +132,84 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 border-b border-border bg-white/80 backdrop-blur-md z-50 transition-colors">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-lg tracking-tighter text-zinc-900">
+          <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tighter text-zinc-900 shrink-0">
             <Layers className="w-5 h-5 text-primary" />
-            CodeForge<span className="text-zinc-500 font-medium">AI</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#about" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">About</a>
-            <a href="#features" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">Features</a>
-            <a href="#pricing" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">Pricing</a>
-            <a href="#faq" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors font-sans">FAQ</a>
-            <a href="#contact" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">Contact</a>
-            <Button onClick={handleDemoMode} variant="ghost" className="text-zinc-500 hover:text-zinc-900 cursor-pointer text-xs font-sans hover:bg-zinc-100/50">
+            CodeForge<span className="text-zinc-550 font-medium">AI</span>
+          </Link>
+          
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center gap-6">
+            <a href="#about" className="text-xs text-zinc-550 hover:text-zinc-900 transition-colors">About</a>
+            <a href="#features" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors">Features</a>
+            <Link href="/pricing" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors">Pricing</Link>
+            <a href="#faq" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors font-sans font-semibold">FAQ</a>
+            <a href="#contact" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors">Contact</a>
+            <Button onClick={handleDemoMode} variant="ghost" className="text-zinc-555 hover:text-zinc-900 cursor-pointer text-xs font-sans hover:bg-zinc-100/50">
               Demo
             </Button>
             <Button onClick={handleLogin} className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans shadow-sm">
               <GithubIcon className="w-4 h-4" /> Sign In
             </Button>
           </div>
+
+          {/* Mobile Menu Button Toggle */}
+          <button 
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="md:hidden p-2 rounded-lg hover:bg-zinc-100/80 text-zinc-650 hover:text-zinc-900 transition-colors border border-border cursor-pointer focus:outline-none"
+            aria-label="Toggle Mobile Menu"
+          >
+            {showMobileMenu ? <X className="w-4.5 h-4.5" /> : <Menu className="w-4.5 h-4.5" />}
+          </button>
         </div>
+
+        {/* Mobile Navigation Dropdown Menu */}
+        {showMobileMenu && (
+          <div className="md:hidden border-t border-border bg-white p-5 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-4 duration-200 text-left">
+            <a 
+              href="#about" 
+              onClick={() => setShowMobileMenu(false)}
+              className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
+            >
+              About
+            </a>
+            <a 
+              href="#features" 
+              onClick={() => setShowMobileMenu(false)}
+              className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
+            >
+              Features
+            </a>
+            <Link 
+              href="/pricing" 
+              onClick={() => setShowMobileMenu(false)}
+              className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
+            >
+              Pricing
+            </Link>
+            <a 
+              href="#faq" 
+              onClick={() => setShowMobileMenu(false)}
+              className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50 font-sans"
+            >
+              FAQ
+            </a>
+            <a 
+              href="#contact" 
+              onClick={() => setShowMobileMenu(false)}
+              className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
+            >
+              Contact
+            </a>
+            <div className="flex gap-3 pt-2">
+              <Button onClick={() => { setShowMobileMenu(false); handleDemoMode(); }} variant="outline" className="flex-1 text-zinc-650 hover:text-zinc-900 cursor-pointer text-xs font-sans h-10 rounded-lg">
+                Demo
+              </Button>
+              <Button onClick={() => { setShowMobileMenu(false); handleLogin(); }} className="flex-1 bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans h-10 rounded-lg shadow-sm">
+                <GithubIcon className="w-4 h-4" /> Sign In
+              </Button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -167,19 +230,19 @@ export default function LandingPage() {
             variants={itemVariants}
             className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter mb-4 text-zinc-900 font-sans"
           >
-            Repository Intelligence for Modern Engineering Teams.
+            Understand Any Codebase in Minutes.
           </motion.h1>
 
           <motion.p
             variants={itemVariants}
-            className="text-sm md:text-base text-zinc-500 mb-8 max-w-2xl leading-relaxed font-sans mt-2"
+            className="text-sm md:text-base text-zinc-550 mb-8 max-w-2xl leading-relaxed font-sans mt-2"
           >
-            Analyze architecture, understand dependencies, detect technical debt, review pull requests, and onboard developers faster using AI-powered repository intelligence.
+            AI-powered repository intelligence for engineering teams. Analyze architecture, uncover technical debt, review pull requests, and onboard developers faster.
           </motion.p>
 
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
             <Button onClick={handleLogin} size="lg" className="h-12 px-8 text-sm bg-primary hover:bg-primary/95 text-white gap-2 font-bold cursor-pointer rounded-xl font-sans shadow-md">
-              Get Started Free <ArrowRight className="w-4 h-4" />
+              Analyze Repository <ArrowRight className="w-4 h-4" />
             </Button>
             <Button onClick={handleDemoMode} size="lg" variant="outline" className="h-12 px-8 text-sm border-border bg-white hover:bg-zinc-50 gap-2 font-medium cursor-pointer rounded-xl text-zinc-700 hover:text-zinc-900 font-sans shadow-sm">
               View Demo
@@ -203,7 +266,7 @@ export default function LandingPage() {
             </div>
 
             {/* Main Window Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 aspect-[16/10] text-left">
+            <div className="grid grid-cols-1 md:grid-cols-4 md:aspect-[16/10] h-auto pb-6 md:pb-0 text-left">
               {/* Sidebar Mockup */}
               <div className="hidden md:flex flex-col border-r border-border bg-white p-4 justify-between font-sans">
                 <div className="flex flex-col gap-6">
@@ -356,8 +419,8 @@ export default function LandingPage() {
         <section id="about" className="mt-40 max-w-4xl text-center border-t border-border pt-20">
           <Badge variant="outline" className="mb-4 border-emerald-200 text-emerald-600 bg-emerald-50">About the Platform</Badge>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 mb-6 font-sans">Autonomous Repository Intelligence</h2>
-          <p className="text-zinc-500 leading-relaxed text-sm md:text-base text-justify md:text-center max-w-3xl mx-auto font-sans">
-            CodeForge AI is an advanced software engineering intelligence platform designed to onboard developers to legacy codebases, perform continuous quality checks, and automate PR reviews. By parsing repository files locally, generating semantic vector chunks, and running evaluations via Gemini Flash/Pro, it extracts deep codebase logic, dependency graphs, technical debt structures, and potential security leaks in real time.
+          <p className="text-zinc-500 leading-relaxed text-sm md:text-base text-center max-w-3xl mx-auto font-sans">
+            CodeForge AI analyzes repositories to uncover architecture, security risks, technical debt, and code insights using AI-powered repository intelligence.
           </p>
         </section>
 
@@ -407,8 +470,8 @@ export default function LandingPage() {
             />
             <FeatureCard
               icon={<Settings className="w-6 h-6 text-pink-500" />}
-              title="Full GitHub Integration"
-              description="Connect with GitHub OAuth, search repositories, or analyze any public project via clone URL input."
+              title="Secure Repository Access"
+              description="Connect with GitHub OAuth or analyze public repositories through a guided import flow built for secure scanning."
             />
           </div>
         </section>
@@ -604,32 +667,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Section: Testimonials */}
-        <section className="mt-40 w-full max-w-4xl">
-          <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 border-indigo-200 text-indigo-650 bg-indigo-50">Testimonials</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-sans">Loved by Software Engineers</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <TestimonialCard 
-              quote="Reduced onboarding time by 70% for our new developers. The codebase chat is incredibly accurate." 
-              author="Alex Rivers" 
-              role="Lead Engineer, NexVio" 
-            />
-            <TestimonialCard 
-              quote="The architecture visualization is outstanding. It makes refactoring circular imports exceptionally clear." 
-              author="Elena Rostova" 
-              role="Backend Architect" 
-            />
-            <TestimonialCard 
-              quote="Automating code analysis and security auditing before our code review has saved hours of manual reviews." 
-              author="Marcus Chen" 
-              role="Director of Tech, Shishu" 
-            />
-          </div>
-        </section>
-
         {/* Section: FAQ */}
         <section id="faq" className="mt-40 w-full max-w-3xl">
           <div className="text-center mb-16">
@@ -731,34 +768,10 @@ export default function LandingPage() {
 
           {/* Social Links & Info */}
           <div className="mt-12 flex flex-col items-center gap-4 text-xs text-zinc-500 font-mono">
-            <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> lingrajmalipatil1@gmail.com</span>
+            <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> hello@codeforgeai.dev</span>
             <div className="flex gap-4">
               <a href="https://github.com/Lingu17" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 flex items-center gap-1"><GithubIcon className="w-3.5 h-3.5 text-zinc-450" /> GitHub</a>
               <a href="https://linkedin.com/in/lingraj-malipatil-a2735a241" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 flex items-center gap-1"><LinkedinIcon className="w-3.5 h-3.5 text-indigo-500" /> LinkedIn</a>
-            </div>
-          </div>
-        </section>
-
-        {/* Future Roadmap Section */}
-        <section className="mt-40 w-full max-w-4xl border-t border-border pt-20">
-          <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 border-pink-200 text-pink-650 bg-pink-50">SaaS Roadmap</Badge>
-            <h2 className="text-3xl font-bold text-zinc-900 font-sans">Upcoming Features</h2>
-            <p className="text-xs text-zinc-500 mt-2 font-sans">Check out what our team is building next for CodeForge AI.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 bg-white border border-border rounded-xl text-left shadow-sm">
-              <h4 className="text-sm font-semibold text-zinc-800 mb-2">Collaboration & Sharing</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed">Team Workspace sharing, collaborative chat threads, and comparing health score changes across developers.</p>
-            </div>
-            <div className="p-5 bg-white border border-border rounded-xl text-left shadow-sm">
-              <h4 className="text-sm font-semibold text-zinc-800 mb-2">Continuous Integration</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed">GitHub Actions support to run security audits and technical debt checks on every pull request automatically.</p>
-            </div>
-            <div className="p-5 bg-white border border-border rounded-xl text-left shadow-sm">
-              <h4 className="text-sm font-semibold text-zinc-800 mb-2">Advanced Monitoring</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed">Vulnerable package dependency tracking, AI commit summary releases, and weekly engineering progress emails.</p>
             </div>
           </div>
         </section>
@@ -774,7 +787,7 @@ export default function LandingPage() {
               CodeForge<span className="text-zinc-500 font-medium">AI</span>
             </div>
             <p className="text-[10px] text-zinc-450 leading-relaxed">AI-Powered Software Repository Analytics & Intelligence Engine.</p>
-            <span className="text-[10px] text-zinc-400 flex items-center gap-1 mt-4">Made with <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" /> by Lingraj</span>
+            <span className="text-[10px] text-zinc-400 mt-4">© 2026 CodeForge AI. All rights reserved.</span>
           </div>
 
           <div className="flex flex-col gap-2 text-left">
