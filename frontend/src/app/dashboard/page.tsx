@@ -188,8 +188,14 @@ function DashboardContent() {
     setLoadingGithubRepos(true);
     setGithubLoadError(false);
     try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const headers: any = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const url = getApiUrl(`/api/repos/github?username=${name}`) + (providerToken ? `&token=${providerToken}` : "");
-      const res = await fetch(url);
+      const res = await fetch(url, { headers });
       if (res.ok) {
         const data = await res.json();
         setGithubRepos(data);
