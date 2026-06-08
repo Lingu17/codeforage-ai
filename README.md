@@ -1,8 +1,6 @@
-# 🚀 CodeForge AI
+<img width="1919" height="972" alt="image" src="https://github.com/user-attachments/assets/6c806663-14f3-4cd3-ac20-a0e991236dc8" /># 🚀 CodeForge AI
 
-<p align="center">
-  <img src="./assets/banner.png" alt="CodeForge AI Banner" width="100%" />
-</p>
+
 
 <p align="center">
   <strong>AI-Powered Software Engineering Copilot for Repository Analysis, Architecture Visualization, Security Audits, and Intelligent Codebase Chat.</strong>
@@ -62,43 +60,47 @@ Built for:
 
 ## Landing Page
 
-![Landing Page](./assets/landing-page.png)
+<img width="1918" height="971" alt="image" src="https://github.com/user-attachments/assets/51262b2a-81b2-4aa2-b874-f87dd5effb1a" />
+
 
 ---
 
 ## Dashboard
 
-![Dashboard](./assets/dashboard.png)
+<img width="1918" height="969" alt="image" src="https://github.com/user-attachments/assets/cc9b6b6d-bd26-4f11-aef0-65d04536963d" />
+
 
 ---
 
 ## Repository Analysis
 
-![Repository Analysis](./assets/repository-analysis.png)
+<img width="1912" height="962" alt="image" src="https://github.com/user-attachments/assets/919191f9-9fc7-4b72-b3c9-779d89e47e32" />
+
 
 ---
 
 ## Architecture Visualization
 
-![Architecture Graph](./assets/architecture-graph.png)
+<img width="1919" height="976" alt="image" src="https://github.com/user-attachments/assets/3847f12e-5d8f-4d89-a93e-b245e467ff41" />
+
 
 ---
 
 ## Security Audit
 
-![Security Audit](./assets/security-audit.png)
+<img width="1919" height="977" alt="image" src="https://github.com/user-attachments/assets/26bf8288-2625-40c8-98ad-1b12c8beb8e1" />
+
 
 ---
 
 ## AI Codebase Chat
 
-![AI Chat](./assets/code-chat.png)
+<img width="1913" height="971" alt="image" src="https://github.com/user-attachments/assets/dc3e4b78-28f5-440a-857a-c0a7ffc88d1b" />
 
----
 
-# 🎥 Demo
 
-![Demo GIF](./assets/demo.gif)
+
+
 
 ---
 
