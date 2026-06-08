@@ -229,18 +229,52 @@ function DashboardContent() {
           const res = await fetch(getApiUrl(`/api/repos/${repo.id}/status`), { headers });
           if (res.ok) {
             const statusData = await res.json();
-            setJobStatuses(prev => ({
-              ...prev,
-              [repo.id]: statusData
-            }));
-
-            // Refresh summary if it just finished
-            if (statusData.status === "completed" && (!jobStatuses[repo.id] || jobStatuses[repo.id].status !== "completed")) {
-              fetchGlobalStats();
-              if (repo.id === selectedRepoId) {
-                fetchRepoSummary(repo.id);
+            setJobStatuses(prev => {
+              const current = prev[repo.id];
+              let shouldFetchSummary = false;
+              
+              if (current) {
+                // If it is a different job, only accept if the new job is newer (by started_at)
+                if (current.id !== statusData.id) {
+                  const currentStart = new Date(current.started_at || 0).getTime();
+                  const newStart = new Date(statusData.started_at || 0).getTime();
+                  if (newStart < currentStart) {
+                    // Ignore stale job status update
+                    return prev;
+                  }
+                } else {
+                  // Same job: reject progress or status regressions
+                  if (current.status === "completed" && statusData.status !== "completed") {
+                    return prev;
+                  }
+                  if (current.status === "failed" && statusData.status !== "failed" && statusData.status !== "completed") {
+                    return prev;
+                  }
+                  if (statusData.progress < current.progress) {
+                    return prev;
+                  }
+                }
               }
-            }
+              
+              // If it just transitioned to completed, fetch summary and stats
+              if (statusData.status === "completed" && (!current || current.status !== "completed")) {
+                shouldFetchSummary = true;
+              }
+              
+              if (shouldFetchSummary) {
+                setTimeout(() => {
+                  fetchGlobalStats();
+                  if (repo.id === selectedRepoId) {
+                    fetchRepoSummary(repo.id);
+                  }
+                }, 0);
+              }
+
+              return {
+                ...prev,
+                [repo.id]: statusData
+              };
+            });
           }
         } catch (e) {
           console.error(e);

@@ -72,7 +72,7 @@ begin
   values (new.id, new.embedding, new.created_at);
   return new;
 end;
-$$ language plpgsql;
+$$ language plpgsql security definer;
 
 create or replace trigger replicate_chunk_embedding_trigger
 after insert on code_chunks

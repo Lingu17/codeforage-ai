@@ -33,7 +33,7 @@ BEGIN
   VALUES (new.id, new.embedding, new.created_at);
   RETURN new;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS replicate_chunk_embedding_trigger ON code_chunks;
 CREATE TRIGGER replicate_chunk_embedding_trigger

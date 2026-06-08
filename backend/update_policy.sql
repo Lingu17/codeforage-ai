@@ -39,4 +39,15 @@ CREATE POLICY "Users can manage embeddings for their repositories"
   USING (EXISTS (SELECT 1 FROM code_chunks JOIN repositories ON code_chunks.repository_id = repositories.id WHERE code_chunks.id = embeddings.chunk_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)))
   WITH CHECK (EXISTS (SELECT 1 FROM code_chunks JOIN repositories ON code_chunks.repository_id = repositories.id WHERE code_chunks.id = embeddings.chunk_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)));
 
+-- 4. Update the replication trigger function to run with SECURITY DEFINER
+-- This allows it to insert rows into the embeddings table bypassing RLS checks.
+CREATE OR REPLACE FUNCTION replicate_code_chunk_embedding()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO embeddings (chunk_id, embedding, created_at)
+  VALUES (new.id, new.embedding, new.created_at);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 NOTIFY pgrst, 'reload schema';
