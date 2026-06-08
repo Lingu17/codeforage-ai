@@ -80,6 +80,7 @@ class PRReviewRequest(BaseModel):
     diff_content: str
     repository_id: Optional[str] = None
 
+@app.get("/", response_model=HealthResponse)
 @app.get("/health", response_model=HealthResponse)
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():
