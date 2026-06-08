@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getApiUrl } from "@/utils/api";
 
 function HealthPageContent() {
   const router = useRouter();
@@ -61,7 +62,7 @@ function HealthPageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/summary`, { headers });
+      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/summary`), { headers });
       if (res.ok) {
         const data = await res.json();
         setSummaryData(data);

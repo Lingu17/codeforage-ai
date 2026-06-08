@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getApiUrl } from "@/utils/api";
 
 function PRReviewsPageContent() {
   const router = useRouter();
@@ -62,7 +63,7 @@ function PRReviewsPageContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch("http://127.0.0.1:8000/api/pr/review", {
+      const res = await fetch(getApiUrl("/api/pr/review"), {
         method: "POST",
         headers,
         body: JSON.stringify({

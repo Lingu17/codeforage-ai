@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Layers, ArrowLeft, Mail, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { getApiUrl } from "@/utils/api";
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -55,7 +56,7 @@ export default function ContactPage() {
     e.preventDefault();
     setSubmitStatus("sending");
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/contact", {
+      const res = await fetch(getApiUrl("/api/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
@@ -110,8 +111,8 @@ export default function ContactPage() {
               <Mail className="w-5 h-5 text-primary shrink-0" />
               <div>
                 <span className="text-zinc-800 block font-sans font-bold">Email Support</span>
-                <a href="mailto:lingrajmalipatil1@gmail.com" className="hover:text-zinc-900 hover:underline transition-colors mt-0.5 block">
-                  lingrajmalipatil1@gmail.com
+                <a href="mailto:hello@codeforgeai.dev" className="hover:text-zinc-900 hover:underline transition-colors mt-0.5 block">
+                  hello@codeforgeai.dev
                 </a>
               </div>
             </div>

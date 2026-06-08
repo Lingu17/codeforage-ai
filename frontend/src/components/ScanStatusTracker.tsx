@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Clock, XCircle, RefreshCw, Server } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { getApiUrl } from "@/utils/api";
 
 interface ScanStatusTrackerProps {
   repoId: string;
@@ -27,7 +28,7 @@ export function ScanStatusTracker({ repoId, onComplete }: ScanStatusTrackerProps
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(`http://127.0.0.1:8000/api/repos/${repoId}/status`, { headers });
+      const res = await fetch(getApiUrl(`/api/repos/${repoId}/status`), { headers });
       if (res.ok) {
         const data = await res.json();
         setStatus(data.status || "queued");
@@ -61,14 +62,14 @@ export function ScanStatusTracker({ repoId, onComplete }: ScanStatusTrackerProps
         headers["Authorization"] = `Bearer ${token}`;
       }
       
-      const reposRes = await fetch("http://127.0.0.1:8000/api/repos", { headers });
+      const reposRes = await fetch(getApiUrl("/api/repos"), { headers });
       if (reposRes.ok) {
         const repos = await reposRes.json();
         const repo = repos.find((r: any) => r.id === repoId);
         if (repo) {
           // Re-trigger analysis
           const analyzeHeaders = { ...headers, "Content-Type": "application/json" };
-          const response = await fetch("http://127.0.0.1:8000/api/repos/analyze", {
+          const response = await fetch(getApiUrl("/api/repos/analyze"), {
             method: "POST",
             headers: analyzeHeaders,
             body: JSON.stringify({

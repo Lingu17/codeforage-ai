@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getApiUrl } from "@/utils/api";
 
 function SecurityPageContent() {
   const router = useRouter();
@@ -64,8 +65,8 @@ function SecurityPageContent() {
         headers["Authorization"] = `Bearer ${token}`;
       }
       const [secRes, debtRes] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/security`, { headers }),
-        fetch(`http://127.0.0.1:8000/api/repos/${activeRepoId}/debt`, { headers })
+        fetch(getApiUrl(`/api/repos/${activeRepoId}/security`), { headers }),
+        fetch(getApiUrl(`/api/repos/${activeRepoId}/debt`), { headers })
       ]);
 
       if (secRes.ok && debtRes.ok) {
