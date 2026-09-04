@@ -556,7 +556,7 @@ export default function LandingPage() {
                 <div className="w-full h-40 bg-zinc-50 rounded-lg p-3 border border-border flex flex-col justify-between text-left font-mono shadow-sm">
                   <div className="text-[10px] text-zinc-500 font-sans">&gt; How are scan statuses updated?</div>
                   <div className="text-[10px] text-zinc-700 leading-relaxed bg-white p-2.5 rounded border border-border shadow-sm">
-                    "Scan status updates are managed by the update_job_status function in scanner.py."
+                    &quot;Scan status updates are managed by the update_job_status function in scanner.py.&quot;
                   </div>
                   <div className="flex gap-1.5"><Badge className="bg-primary/10 text-primary border-primary/20 text-[8px]">scanner.py</Badge></div>
                 </div>
@@ -968,7 +968,7 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
   return (
     <Card className="bg-white border-border p-6 flex flex-col justify-between text-left relative shadow-sm">
       <div className="absolute -top-3 left-4 text-3xl font-serif text-zinc-300 pointer-events-none select-none">“</div>
-      <p className="text-zinc-650 text-xs leading-relaxed italic z-10">"{quote}"</p>
+      <p className="text-zinc-650 text-xs leading-relaxed italic z-10">&quot;{quote}&quot;</p>
       <div className="mt-6">
         <span className="block font-semibold text-xs text-zinc-900">{author}</span>
         <span className="text-[10px] text-zinc-450">{role}</span>

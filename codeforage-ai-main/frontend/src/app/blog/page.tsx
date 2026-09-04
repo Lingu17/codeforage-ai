@@ -152,7 +152,7 @@ export default function BlogPage() {
           </Badge>
           <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 font-sans">Engineering Blog</h1>
           <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl font-sans">
-            In-depth guides, architectural analyses, and engineering lessons from building CodeForge AI's code indexing and RAG systems.
+            In-depth guides, architectural analyses, and engineering lessons from building CodeForge AI&apos;s code indexing and RAG systems.
           </p>
         </div>
 

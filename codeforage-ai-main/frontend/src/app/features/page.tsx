@@ -91,7 +91,7 @@ export default function FeaturesPage() {
               </div>
               <h2 className="text-xl font-bold text-white">3. Context-Aware Codebase Chat (RAG)</h2>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Ask natural language queries like "Where are authentication headers configured?" and receive highly precise, context-aware answers. CodeForge fetches the most relevant code chunks from pgvector database storage and utilizes them to ground the AI response with concrete file citations.
+                Ask natural language queries like &quot;Where are authentication headers configured?&quot; and receive highly precise, context-aware answers. CodeForge fetches the most relevant code chunks from pgvector database storage and utilizes them to ground the AI response with concrete file citations.
               </p>
             </div>
             <div className="w-full md:w-[380px] bg-zinc-950 border border-white/5 p-4 rounded-xl shrink-0 flex flex-col gap-2 font-mono text-[9px] text-zinc-500">

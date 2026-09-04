@@ -57,7 +57,7 @@ export function ComingSoonModal({ isOpen, onClose }: ComingSoonModalProps) {
 
         {submitted ? (
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
-            <span className="text-xs text-emerald-400 font-medium">🎉 You've been successfully added to the waitlist!</span>
+            <span className="text-xs text-emerald-400 font-medium">🎉 You&apos;ve been successfully added to the waitlist!</span>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex gap-2">

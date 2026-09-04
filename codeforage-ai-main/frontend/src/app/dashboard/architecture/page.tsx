@@ -22,7 +22,7 @@ function CodeNode({ data, selected }: any) {
   const basename = filePath.split("/").pop() || filePath;
   const ext = basename.split(".").pop()?.toLowerCase();
   
-  let Icon = FileText;
+  const Icon = FileText;
   let iconColor = "text-slate-400";
   let borderColor = "border-slate-200";
 
@@ -644,7 +644,7 @@ function ArchitecturePageContent() {
               <Layers className="w-12 h-12 text-[#6B7280] mb-3 opacity-30" />
               <h4 className="text-sm font-semibold text-[#111827]">No architecture nodes found</h4>
               <p className="text-xs text-[#6B7280] max-w-xs mt-1">
-                We couldn't resolve any local file dependencies or imports. Make sure the files are in supported languages and import local path structures.
+                We couldn&apos;t resolve any local file dependencies or imports. Make sure the files are in supported languages and import local path structures.
               </p>
             </div>
           ) : (

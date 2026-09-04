@@ -3,24 +3,14 @@
 import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Loader2, ArrowLeft, MessageSquare, Send, Plus, Square,
-  FileCode, Check, ShieldAlert, Sparkles, X, Menu, Copy, RotateCcw
+  ShieldAlert, Sparkles, X, Menu, ArrowDown,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getApiUrl } from "@/utils/api";
-
-type StreamMsg = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  citations: string[];
-  created_at: string;
-  error?: string;
-  streaming?: boolean;
-};
+import MessageBubble, { type StreamMessage } from "@/components/chat/MessageBubble";
 
 type ChatSession = {
   id: string;
@@ -30,6 +20,8 @@ type ChatSession = {
 };
 
 type ChatStatus = "idle" | "submitting" | "streaming" | "completed" | "error" | "cancelled";
+
+const SCROLL_PIN_THRESHOLD = 96;
 
 /**
  * Incrementally parses Server-Sent Events from an arbitrary byte stream.
@@ -89,6 +81,16 @@ function uuid(): string {
   });
 }
 
+function normalizeMessage(m: { id: string; role: string; content: string; citations?: string[]; created_at: string }): StreamMessage {
+  return {
+    id: m.id,
+    role: m.role === "assistant" ? "assistant" : "user",
+    content: m.content,
+    citations: m.citations || [],
+    created_at: m.created_at,
+  };
+}
+
 function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,24 +101,33 @@ function ChatPageContent() {
   const [error, setError] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<StreamMsg[]>([]);
+  const [messages, setMessages] = useState<StreamMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [showSessionsDrawer, setShowSessionsDrawer] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle");
+  const [nearBottom, setNearBottom] = useState(true);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const activeRequestIdRef = useRef<string | null>(null);
-  // Synchronous in-flight guard. React state (chatStatus) is only observable
-  // after a re-render, so a rapid second activation (double click / Enter+click)
-  // could slip past the state-based guard and fire a duplicate POST. A ref is
-  // visible to every handler invocation immediately, guaranteeing exactly one
-  // request per user submission regardless of render timing.
   const sendingRef = useRef(false);
   // Monotonic token so a slow /messages response from a previously selected
   // conversation can never overwrite the currently viewed conversation.
   const messagesLoadRef = useRef(0);
+  // Per-session message cache so switching conversations is instant (network
+  // is only used to refresh in the background). In-flight tracking prevents a
+  // double click from firing two requests for the same session.
+  const messagesCacheRef = useRef<Map<string, StreamMessage[]>>(new Map());
+  const messagesLoadingRef = useRef<string | null>(null);
+  // Mirrors of render state, read by stable async callbacks.
+  const messagesRef = useRef<StreamMessage[]>([]);
+  const currentSessionIdRef = useRef<string | null>(null);
+  // Scroll pinning: while pinned we keep the newest content in view with an
+  // O(1) scroll set (no per-token smooth scrollIntoView churn). If the user
+  // scrolls up we release the pin and show a "jump to latest" affordance.
+  const stickToBottomRef = useRef(true);
+  const copyTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Intentional: sync activeRepoId to the URL/localStorage source of truth
@@ -141,15 +152,47 @@ function ChatPageContent() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [searchParams, pathname, router]);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, []);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
-    if (messages.length || chatStatus === "streaming") {
-      scrollToBottom();
-    }
-  }, [messages, chatStatus, scrollToBottom]);
+    currentSessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
+
+  const scrollToLatest = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
+  // Pin to the newest message whenever the conversation grows while the user
+  // is near the bottom (the common case during streaming). One assignment per
+  // delta is far cheaper and smoother than scrollIntoView({ behavior: "smooth" }),
+  // which forces a layout + animated scroll on every token.
+  useEffect(() => {
+    if (!stickToBottomRef.current) return;
+    scrollToLatest();
+  }, [messages, scrollToLatest]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const pinned = distance < SCROLL_PIN_THRESHOLD;
+    stickToBottomRef.current = pinned;
+    setNearBottom((prev) => (prev === pinned ? prev : pinned));
+  }, []);
+
+  const startNewSession = useCallback(() => {
+    stickToBottomRef.current = true;
+    setNearBottom(true);
+    abortRef.current?.abort();
+    activeRequestIdRef.current = null;
+    currentSessionIdRef.current = null;
+    setCurrentSessionId(null);
+    setMessages([]);
+    setChatStatus("idle");
+  }, []);
 
   const fetchSessions = useCallback(async (): Promise<ChatSession[] | null> => {
     if (!activeRepoId) return null;
@@ -174,8 +217,10 @@ function ChatPageContent() {
     return null;
   }, [activeRepoId]);
 
-  const fetchMessages = useCallback(async (sessionId: string) => {
-    // Only apply the result if this is still the active conversation; a slow
+  const loadMessages = useCallback(async (sessionId: string) => {
+    if (messagesLoadingRef.current === sessionId) return; // already in-flight
+    messagesLoadingRef.current = sessionId;
+    // Only apply the result if this is still the newest requested load; a slow
     // /messages response from a previously selected conversation must never
     // overwrite the messages of the one the user is currently viewing.
     const loadId = ++messagesLoadRef.current;
@@ -188,21 +233,46 @@ function ChatPageContent() {
       const res = await fetch(getApiUrl(`/api/chat/sessions/${sessionId}/messages`), { headers });
       if (messagesLoadRef.current !== loadId) return; // superseded by a newer load
       if (res.ok) {
-        const data = await res.json();
-        setMessages((data || []).map((m: { id: string; role: string; content: string; citations?: string[]; created_at: string }) => ({
-          id: m.id,
-          role: m.role === "assistant" ? "assistant" : "user",
-          content: m.content,
-          citations: m.citations || [],
-          created_at: m.created_at,
-        })));
+        const fetched = (await res.json()) as Array<{ id: string; role: string; content: string; citations?: string[]; created_at: string }>;
+        const normalized = (fetched || []).map(normalizeMessage);
+        messagesCacheRef.current.set(sessionId, normalized);
+        // Only swap into view when the user is still looking at this session.
+        if (currentSessionIdRef.current === sessionId) {
+          stickToBottomRef.current = true;
+          setMessages(normalized);
+        }
       }
     } catch (e) {
       console.error("Error fetching chat messages:", e);
     } finally {
-      if (messagesLoadRef.current === loadId) messagesLoadRef.current = 0;
+      if (messagesLoadRef.current === loadId) {
+        messagesLoadRef.current = 0;
+        messagesLoadingRef.current = null;
+      }
     }
   }, []);
+
+  const fetchMessages = useCallback((sessionId: string) => {
+    // Instant switch: render from the per-session cache when we have it, then
+    // refresh in the background so DB updates still show up.
+    if (messagesCacheRef.current.has(sessionId)) {
+      setMessages(messagesCacheRef.current.get(sessionId) || []);
+      stickToBottomRef.current = true;
+      setNearBottom(true);
+    }
+    void loadMessages(sessionId);
+  }, [loadMessages]);
+
+  const selectSession = useCallback((sessionId: string) => {
+    // A synchronous ref guard (not state) so the initial duplicate click that
+    // arrives before React re-renders is ignored.
+    if (sendingRef.current) return;
+    currentSessionIdRef.current = sessionId;
+    stickToBottomRef.current = true;
+    setNearBottom(true);
+    setCurrentSessionId(sessionId);
+    fetchMessages(sessionId);
+  }, [fetchMessages]);
 
   useEffect(() => {
     if (!activeRepoId) return;
@@ -212,6 +282,12 @@ function ChatPageContent() {
     /* eslint-disable react-hooks/set-state-in-effect */
     abortRef.current?.abort();
     activeRequestIdRef.current = null;
+    sendingRef.current = false;
+    messagesCacheRef.current.clear();
+    messagesRef.current = [];
+    messagesLoadingRef.current = null;
+    currentSessionIdRef.current = null;
+    stickToBottomRef.current = true;
     setSessions([]);
     setMessages([]);
     setError(false);
@@ -221,20 +297,13 @@ function ChatPageContent() {
     (async () => {
       const data = await fetchSessions();
       if (data && data.length > 0 && data[0].id) {
+        currentSessionIdRef.current = data[0].id;
         setCurrentSessionId(data[0].id);
         fetchMessages(data[0].id);
       }
       setLoading(false);
     })();
   }, [activeRepoId, fetchSessions, fetchMessages]);
-
-  const handleStartNewSession = () => {
-    abortRef.current?.abort();
-    activeRequestIdRef.current = null;
-    setCurrentSessionId(null);
-    setMessages([]);
-    setChatStatus("idle");
-  };
 
   const submitStream = useCallback(async (text: string, opts?: { requestId?: string; reuseUser?: boolean }) => {
     if (!activeRepoId || !text.trim()) return;
@@ -250,7 +319,7 @@ function ChatPageContent() {
     const requestId = opts?.requestId || uuid();
     activeRequestIdRef.current = requestId;
     const reuseUser = !!opts?.reuseUser;
-    const userMsg: StreamMsg = {
+    const userMsg: StreamMessage = {
       id: `user-${requestId}`,
       role: "user",
       content: text,
@@ -258,7 +327,7 @@ function ChatPageContent() {
       created_at: new Date().toISOString(),
     };
     const assistantId = `assistant-${requestId}`;
-    const assistantMsg: StreamMsg = {
+    const assistantMsg: StreamMessage = {
       id: assistantId,
       role: "assistant",
       content: "",
@@ -284,6 +353,7 @@ function ChatPageContent() {
 
     const isCurrent = () => activeRequestIdRef.current === requestId;
     let reply = "";
+    let gotSessionId = currentSessionId;
 
     try {
       const supabase = createClient();
@@ -323,8 +393,37 @@ function ChatPageContent() {
       setChatStatus("streaming");
 
       const reader = res.body.getReader();
-      let gotSessionId = currentSessionId;
       let assistantCitations: string[] = [];
+
+      const finishFinalMessage = (streaming: boolean, error?: string) => {
+        // Belt-and-suspenders: also persist the final state into the per-session
+        // cache so a quick switch away and back never shows a stuck spinner.
+        const sid = gotSessionId;
+        if (sid) {
+          const base = messagesRef.current;
+          messagesCacheRef.current.set(
+            sid,
+            base.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    streaming,
+                    error: error || m.error,
+                    content: reply || m.content,
+                    citations: assistantCitations,
+                  }
+                : m
+            )
+          );
+        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, streaming, error: error || m.error, content: reply || m.content, citations: assistantCitations }
+              : m
+          )
+        );
+      };
 
       const parser = createSSEParser((event, dataLines) => {
         if (!isCurrent()) return;
@@ -345,7 +444,10 @@ function ChatPageContent() {
             const j = JSON.parse(jsonData);
             if (j.session_id) gotSessionId = j.session_id;
             if (j.citations) assistantCitations = j.citations;
-            if (!currentSessionId && j.session_id) setCurrentSessionId(j.session_id);
+            if (!currentSessionId && j.session_id) {
+              currentSessionIdRef.current = j.session_id;
+              setCurrentSessionId(j.session_id);
+            }
           } catch {}
           return;
         }
@@ -356,13 +458,7 @@ function ChatPageContent() {
             const j = JSON.parse(jsonData);
             friendly = j.message || friendly;
           } catch {}
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, streaming: false, error: friendly, content: m.content || "" }
-                : m
-            )
-          );
+          if (isCurrent()) finishFinalMessage(false, friendly);
           setChatStatus("error");
           return;
         }
@@ -373,15 +469,12 @@ function ChatPageContent() {
             gotSessionId = j.session_id || gotSessionId;
             if (j.citations && Array.isArray(j.citations)) assistantCitations = j.citations;
             if (j.content) reply = j.content;
-            if (j.session_id && !currentSessionId) setCurrentSessionId(j.session_id);
+            if (j.session_id && !currentSessionId) {
+              currentSessionIdRef.current = j.session_id;
+              setCurrentSessionId(j.session_id);
+            }
           } catch {}
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, streaming: false, content: reply || m.content, citations: assistantCitations }
-                : m
-            )
-          );
+          finishFinalMessage(false);
           setChatStatus("completed");
         }
       });
@@ -398,15 +491,10 @@ function ChatPageContent() {
       if (isCurrent()) {
         // Belt-and-suspenders: if no terminal event arrived (e.g. the stream
         // closed early), still finalize so we never leave a stuck spinner.
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, streaming: false, content: reply || m.content, citations: assistantCitations }
-              : m
-          )
-        );
+        finishFinalMessage(false);
         if (chatStatus !== "error") setChatStatus("completed");
         if (gotSessionId && gotSessionId !== currentSessionId) {
+          currentSessionIdRef.current = gotSessionId;
           setCurrentSessionId(gotSessionId);
           fetchSessions();
         }
@@ -417,6 +505,11 @@ function ChatPageContent() {
       const aborted = err?.name === "AbortError" && !timedOut;
       if (isCurrent()) {
         if (aborted) {
+          if (gotSessionId) {
+            messagesCacheRef.current.set(gotSessionId, messagesRef.current.map((m) =>
+              m.id === assistantId ? { ...m, streaming: false } : m
+            ));
+          }
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m))
           );
@@ -446,6 +539,29 @@ function ChatPageContent() {
     }
   }, [activeRepoId, currentSessionId, fetchSessions, chatStatus]);
 
+  // Stable handlers passed into memoized bubbles so only the changed message
+  // re-renders while the stream is producing deltas.
+  const copyMessage = useCallback((content: string, id: string) => {
+    void navigator.clipboard?.writeText(content);
+    setCopiedId(id);
+    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = window.setTimeout(() => setCopiedId(null), 2000);
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    const current = messagesRef.current;
+    const last = current[current.length - 1];
+    if (last && last.role === "assistant" && last.error) {
+      const userMsg = [...current].reverse().find((m) => m.role === "user");
+      if (userMsg) {
+        const retryId = userMsg.id.startsWith("user-") ? userMsg.id.slice("user-".length) : undefined;
+        setMessages((prev) => prev.filter((m) => m.role !== "assistant" || !m.error));
+        setChatStatus("idle");
+        submitStream(userMsg.content, { requestId: retryId, reuseUser: true });
+      }
+    }
+  }, [submitStream]);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputMessage.trim();
@@ -466,36 +582,14 @@ function ChatPageContent() {
     abortRef.current?.abort();
   };
 
-  const handleRetry = () => {
-    const last = messages[messages.length - 1];
-    if (last && last.role === "assistant" && last.error) {
-      // Find the preceding user message and re-send. Reuse the original
-      // request_id + user row so one submit always means exactly one user
-      // message (deduped end-to-end, even across backend restarts).
-      const userMsg = [...messages].reverse().find((m) => m.role === "user");
-      if (userMsg) {
-        const retryId = userMsg.id.startsWith("user-") ? userMsg.id.slice("user-".length) : undefined;
-        setMessages((prev) => prev.filter((m) => m.role !== "assistant" || !m.error));
-        setChatStatus("idle");
-        submitStream(userMsg.content, { requestId: retryId, reuseUser: true });
-      }
-    }
-  };
-
-  const copyMessage = (content: string, id: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
   if (!loading && !activeRepoId) {
     return (
       <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen">
         <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => router.push("/dashboard")}
               className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
             >
@@ -507,10 +601,10 @@ function ChatPageContent() {
             </div>
           </div>
         </header>
-        <EmptyState 
-          title="No Repository Connected" 
-          description="Import a repository to start chatting and semantic querying." 
-          action="Import Repository" 
+        <EmptyState
+          title="No Repository Connected"
+          description="Import a repository to start chatting and semantic querying."
+          action="Import Repository"
         />
       </div>
     );
@@ -523,9 +617,9 @@ function ChatPageContent() {
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-4 sm:px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.push(`/dashboard`)}
             className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
           >
@@ -546,9 +640,9 @@ function ChatPageContent() {
             <span>Codebase Chat</span>
           </div>
         </div>
-        
-        <Button 
-          onClick={handleStartNewSession}
+
+        <Button
+          onClick={startNewSession}
           disabled={!!streamingActive}
           className="bg-primary hover:bg-primary/95 text-white text-xs gap-1.5 cursor-pointer font-semibold shadow-xs h-9 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -563,7 +657,7 @@ function ChatPageContent() {
           <div className="p-4 border-b border-[#E5E7EB]">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">Conversations</span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
             {loading ? (
               <div className="flex flex-col gap-2 animate-pulse">
@@ -577,14 +671,10 @@ function ChatPageContent() {
               sessions.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => {
-                    if (streamingActive) return;
-                    setCurrentSessionId(s.id);
-                    fetchMessages(s.id);
-                  }}
+                  onClick={() => selectSession(s.id)}
                   className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition-all truncate border cursor-pointer ${
-                    currentSessionId === s.id 
-                      ? "bg-slate-50 text-primary border-primary/20 shadow-xs" 
+                    currentSessionId === s.id
+                      ? "bg-slate-50 text-primary border-primary/20 shadow-xs"
                       : "text-slate-600 hover:text-zinc-900 hover:bg-slate-50 border-transparent"
                   }`}
                 >
@@ -598,7 +688,11 @@ function ChatPageContent() {
         {/* Right Side: Chat Console */}
         <div className="flex-1 flex flex-col bg-[#F8FAFC] relative min-w-0">
           {/* Messages Flow */}
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 flex flex-col gap-6">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-6 md:p-8 flex flex-col gap-6 relative"
+          >
             {loading ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-20 bg-[#F8FAFC] animate-pulse">
                 <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
@@ -624,7 +718,7 @@ function ChatPageContent() {
                 <p className="text-xs text-[#6B7280] mt-2 leading-relaxed max-w-md">
                   Query architectural imports, structural code components, security weaknesses, database layouts, or generate developer guides with vector citations.
                 </p>
-                
+
                 <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
                   {[
                     { label: "Explain Repository Structure", query: "Can you explain the overall repository structure and high-level folders?" },
@@ -636,7 +730,7 @@ function ChatPageContent() {
                     { label: "Review Technical Debt", query: "What are the primary technical debt issues or code smells in this project?" },
                     { label: "Generate Architecture Summary", query: "Can you generate a comprehensive architecture summary of this codebase?" }
                   ].map((card, i) => (
-                    <button 
+                    <button
                       key={i}
                       type="button"
                       onClick={() => { setInputMessage(""); submitStream(card.query); }}
@@ -651,92 +745,41 @@ function ChatPageContent() {
               </div>
             ) : (
               <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
-                {messages.map((m, idx) => {
-                  const isUser = m.role === "user";
-                  return (
-                    <div 
-                      key={m.id || idx} 
-                      className={`flex flex-col max-w-[85%] ${
-                        isUser ? "self-end items-end animate-in slide-in-from-bottom-2 duration-150" : "self-start items-start animate-in fade-in duration-200"
-                      }`}
-                    >
-                      <div className={`p-4 rounded-2xl text-sm leading-relaxed border text-left ${
-                        isUser 
-                          ? "bg-primary border-primary text-white rounded-br-none shadow-xs font-semibold" 
-                          : "bg-white border-[#E5E7EB] text-[#111827] rounded-bl-none shadow-xs font-normal font-sans"
-                      }`}>
-                        <div className="space-y-2 whitespace-pre-wrap">
-                          {m.streaming ? (
-                            m.content ? (
-                              <>
-                                {m.content}
-                                <span className="inline-block w-2 h-4 bg-primary/60 align-text-bottom animate-pulse ml-0.5" />
-                              </>
-                            ) : (
-                              <span className="inline-flex items-center gap-2 text-[#6B7280] font-mono text-xs">
-                                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-                                Analyzing repository...
-                              </span>
-                            )
-                          ) : m.error ? (
-                            <span className="text-[#B45309]">{m.error}</span>
-                          ) : (
-                            m.content
-                          )}
-                        </div>
-                      </div>
-                      
-                      {!isUser && !m.streaming && m.content && (
-                        <div className="mt-2 flex flex-wrap gap-2 items-center text-left">
-                          <button 
-                            onClick={() => copyMessage(m.content, m.id)}
-                            className="flex items-center gap-1 text-[10px] text-[#6B7280] hover:text-[#111827] font-mono cursor-pointer font-semibold"
-                            aria-label="Copy answer"
-                          >
-                            {copiedId === m.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                            {copiedId === m.id ? "Copied" : "Copy"}
-                          </button>
-                          <span className="text-[10px] text-[#B45309] font-mono flex items-center gap-1 font-semibold">
-                            <FileCode className="w-3 h-3" /> Based on:
-                          </span>
-                          {m.citations.map((c: string, cIdx: number) => (
-                            <Badge 
-                              key={cIdx} 
-                              variant="outline" 
-                              className="bg-white hover:bg-slate-50 border-[#E5E7EB] text-[10px] text-[#6B7280] font-mono py-0.5 px-2 select-all cursor-pointer rounded-md shadow-2xs"
-                            >
-                              {c}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-
-                      {!isUser && !m.streaming && m.error && (
-                        <Button 
-                          onClick={handleRetry}
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2 border-[#E5E7EB] text-xs gap-1.5 cursor-pointer font-bold bg-white"
-                        >
-                          <RotateCcw className="w-3 h-3" /> Retry
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-                
-                <div ref={messagesEndRef} />
+                {messages.map((m, idx) => (
+                  <MessageBubble
+                    key={m.id || idx}
+                    message={m}
+                    copied={copiedId === m.id}
+                    onCopy={copyMessage}
+                    onRetry={handleRetry}
+                  />
+                ))}
               </div>
+            )}
+
+            {!nearBottom && (
+              <button
+                type="button"
+                onClick={() => {
+                  stickToBottomRef.current = true;
+                  setNearBottom(true);
+                  scrollToLatest();
+                }}
+                className="absolute bottom-6 right-6 z-10 grid h-9 w-9 place-items-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-lg hover:text-[#111827] transition-transform cursor-pointer"
+                aria-label="Scroll to latest messages"
+              >
+                <ArrowDown className="w-4 h-4" />
+              </button>
             )}
           </div>
 
           {/* Form Input */}
           <div className="p-6 border-t border-[#E5E7EB] bg-white shrink-0 z-10">
-            <form 
+            <form
               onSubmit={handleSend}
               className="max-w-4xl mx-auto flex gap-3 items-end"
             >
-              <textarea 
+              <textarea
                 placeholder="Ask a question about the codebase (Enter to send, Shift+Enter for newline)"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
@@ -746,16 +789,16 @@ function ChatPageContent() {
                 disabled={!!streamingActive}
               />
               {streamingActive ? (
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={handleStop}
                   className="bg-rose-600 hover:bg-rose-500 text-white h-11 px-5 rounded-xl cursor-pointer shadow-xs font-semibold"
                 >
                   <Square className="w-4 h-4 fill-current" />
                 </Button>
               ) : (
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={!inputMessage.trim()}
                   className="bg-primary hover:bg-primary/95 text-white h-11 px-5 rounded-xl cursor-pointer shadow-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -774,9 +817,9 @@ function ChatPageContent() {
           <div className="relative w-64 h-full border-r border-[#E5E7EB] bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-250">
             <div className="p-4 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">Conversations</span>
-              <button 
+              <button
                 type="button"
-                onClick={() => setShowSessionsDrawer(false)} 
+                onClick={() => setShowSessionsDrawer(false)}
                 className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors border border-[#E5E7EB] cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
@@ -790,14 +833,12 @@ function ChatPageContent() {
                   <button
                     key={s.id}
                     onClick={() => {
-                      if (streamingActive) return;
-                      setCurrentSessionId(s.id);
                       setShowSessionsDrawer(false);
-                      fetchMessages(s.id);
+                      selectSession(s.id);
                     }}
                     className={`w-full text-left p-3 rounded-xl text-xs font-semibold transition-all truncate border cursor-pointer ${
-                      currentSessionId === s.id 
-                        ? "bg-slate-50 text-primary border-primary/20 shadow-xs animate-in fade-in" 
+                      currentSessionId === s.id
+                        ? "bg-slate-50 text-primary border-primary/20 shadow-xs animate-in fade-in"
                         : "text-slate-600 hover:text-zinc-900 hover:bg-slate-50 border-transparent"
                     }`}
                   >
