@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+venv/
+*.pyc
+
+# Environment / secrets — never commit
+.env
+.env.*
+
+# Runtime logs
+*.log
+uvicorn.err.log
+uvicorn.log
+backend_stdout.log
+backend_stderr.log
+reembed_*.log
+*_pid.txt

@@ -1,0 +1,94 @@
+total chunks: 272
+progress 20/272 updated=20 failed=0
+progress 40/272 updated=40 failed=0
+progress 60/272 updated=60 failed=0
+progress 80/272 updated=80 failed=0
+progress 100/272 updated=100 failed=0
+chunk update fail: f9d5e8cd-ab58-4cc4-af56-98cba77c875d ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 4b882e39-ee65-42a7-bfbb-4b36e45589d7 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 7b1cdc1f-f5c1-4378-8b8c-5634f7bfeccb ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 084bce27-515a-4cba-a718-3590af6c8584 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 49ed7649-e43e-4509-96d3-da9c3e9a7069 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 6cd8a141-8e72-461a-9db8-fa2cec298a16 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 6c49e839-92cb-4964-844d-4573b9dd806a ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 7de9a2d3-62d0-444d-bc3e-bdff101ff0a9 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 1de63d63-b95b-4512-a437-16878b1f43b7 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 9cf34bc4-008d-4e37-8cfb-a5bf76dcc78a ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 51d49598-3007-4e37-a56c-01fcbab76011 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+progress 120/272 updated=109 failed=11
+chunk update fail: 14b4fa17-2d28-4ae7-aa59-998379a6ee6d ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: f00b85c8-d489-4d2c-81a9-b7105e493da6 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 2285890e-de3d-4415-ac69-88620e559819 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: c1c3abcd-9073-4071-bdc1-5d6906ca4126 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 6e134b4d-e72b-4748-97df-31670718ed39 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: ae20ec05-e30d-4242-aafb-f1b75a998ef5 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 0a88793e-d970-4153-a361-473f8ef0b098 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 9752b7fa-ff70-469c-b708-e32e501dd04a ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 444fdb0a-638a-4906-9213-c2ba169176f7 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 454c76e6-082b-48a1-999a-27767aa01d05 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: b438347c-76a3-4f14-a04e-7b638cd4233f ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: e4481285-76e4-4f3b-b007-17c3bf411e95 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: d5ca9961-6667-4e94-930f-484adf206eee ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: bb172efe-39ae-4f75-8a25-5dc05ed1a2db ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 9db8e7d8-de1d-42c4-8a4e-2dda762060dd ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 77a0704f-19f7-455b-b7bd-1c99fe689ffd ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 60075369-6e35-4d58-a6f6-4601ced16815 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: a806562e-6bde-453e-bbc0-208489986055 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: f1573fee-2e1d-49e5-b1f6-c4e2bb9c6909 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+progress 140/272 updated=110 failed=30
+chunk update fail: 50a4558d-330d-4e6f-b603-6d3a99531ceb ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 46d3f395-58b8-427a-b1c4-dd2c121c7406 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 5234d900-99b7-4f77-b6fb-e29a5b23ae93 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 2e659b5c-117f-438e-86ff-7855d68c3d93 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 32f9017f-2be6-4039-8b8c-da6999d8c78e ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: bae0130c-5e45-46f7-b629-244c6f098576 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 3ad9ad2d-7bd7-4442-a803-66669c58e6fe ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 79dfa98d-e421-41a2-9021-705b0d7fad97 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 90a4aa80-8f41-403b-aa1e-e08c6b2a46c7 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: cfdcabf2-2217-47f9-a18a-93346e768425 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: a2e5178e-5e12-4c9b-a838-9383f6da06dc ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: fb72235a-32bd-4128-856e-9e685890f209 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: a4ff37a8-beed-4348-a8af-bb8caab8c8fa ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 24d63720-d26b-4a0a-8c3a-87df16083509 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 500bff12-fb40-4ddc-a857-4b5b2ef73162 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: b1620450-bc6e-4799-b091-eb88fefbfc59 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 040947e3-0363-4fe8-b279-a261dff475f6 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 8dba5ac3-68ed-46ac-9093-5d0a8128b651 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 17042edb-bf51-40ec-a8ee-41de53c58379 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 53ea00e5-4b8c-494c-b96e-8c5c53a39b5d ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+progress 160/272 updated=110 failed=50
+chunk update fail: b9b0314f-412c-47aa-8cc8-de029b8075ef ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 982eaa47-1f11-46ab-9fcb-97f319e9fb94 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 11df283c-1df6-4798-a3d9-944b6eb45b80 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 3c84d829-2b5e-4d79-823f-3702a9a881df ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: fb217d25-8900-4302-bb29-5ad6b28ba218 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: b787ce40-f126-4659-a066-0e70f630658a ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: c1daa1f5-14a8-4edc-b302-658eca292fc3 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 05b2c848-ef32-4f0a-b9cc-ccfe5259c6fd ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 68a379ff-156b-4d4d-b8a0-046c0baa996d ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 0b849c2a-a837-4cc5-8f77-bb2f1e19625f ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: ef91f91f-d698-4834-97dc-40ed532c8ca8 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 2ea2822a-8dd6-42c4-b5d6-cd21ee75e58d ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 48c65293-dedf-4209-a83f-addc4fa21a40 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 4694d185-a8ca-49fe-af61-5f4e38fb3b39 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: 98c4038e-f8d0-4943-b818-e666c9266589 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: e7e14441-6ca4-4979-8f53-da8cea8456b1 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: cdc57b82-2c4b-4c9a-bfb4-463938382d22 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+chunk update fail: d58af4fe-6c13-4832-8426-f63b3e9f5399 ClientError("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check y
+progress 180/272 updated=112 failed=68
+progress 200/272 updated=132 failed=68
+chunk update fail: f93fd2e1-deeb-45d0-a37f-a7bc1268a6f0 ReadError('[WinError 10054] An existing connection was forcibly closed by the remote host')
+chunk update fail: f089c8ba-1b7a-483c-9de0-a89be4003444 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 5f7a2ffc-6d08-4cf4-86aa-508f485c3773 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 42654f0a-b183-4fce-a8e9-a586cc647d14 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: bc7a04ee-9e41-40bb-b840-7827c998e8c0 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 65786eca-a69b-44d4-a798-80ce3f28e937 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: a7c587f6-da07-4256-8dfe-848045a24c2f ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 1eb76c4c-380c-47cd-9504-121a5dcd604a ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 2e32d127-7fe3-411c-ac78-eee7ccfcb273 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 9bef4e7c-4332-4360-bab1-2aea45a53c32 ConnectError('[Errno 11001] getaddrinfo failed')
+chunk update fail: 86562b1c-57bd-4cea-9aaf-40d87fa18b08 ConnectError('[Errno 11001] getaddrinfo failed')
+progress 220/272 updated=141 failed=79
+progress 240/272 updated=161 failed=79
+progress 260/272 updated=181 failed=79
+DONE updated=193 failed=79
