@@ -275,7 +275,7 @@ function SecurityPageContent() {
                 <ShieldCheck className="w-8 h-8 text-emerald-500" />
                 <h4 className="text-xs font-bold text-zinc-900">No vulnerabilities found</h4>
                 <p className="text-[10px] text-[#6B7280] max-w-xs">
-                  We didn't detect any immediate hardcoded tokens, API keys, or unescaped query configurations.
+                  We didn&apos;t detect any immediate hardcoded tokens, API keys, or unescaped query configurations.
                 </p>
               </div>
             ) : (

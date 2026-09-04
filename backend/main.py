@@ -1,11 +1,13 @@
 # CodeForge AI Main API Entrypoint (Supabase SDK patched)
 import os
-import httpx
 import json
+import threading
+import httpx
 import google.generativeai as genai
 from typing import Optional, List
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from database import get_supabase_client
 from scanner import scan_and_analyze_repository, generate_embedding
@@ -75,6 +77,9 @@ class AnalyzeRepoRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+
+class ChatStreamRequest(ChatRequest):
+    request_id: Optional[str] = None
 
 class PRReviewRequest(BaseModel):
     diff_content: str
@@ -467,6 +472,199 @@ def chat_codebase(id: str, req: ChatRequest, user_id: str = Depends(get_authenti
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# In-memory idempotency cache mapping request_id -> chat_session_id. Once a
+# submission is resolved to a session it is never resolved again, so a browser
+# retry of the same request_id cannot create a duplicate conversation or row.
+_chat_request_cache = {}
+_chat_request_lock = threading.Lock()
+_CHAT_CACHE_MAX = 512
+
+def _sse(event: str, data: str) -> str:
+    return f"event: {event}\ndata: {data}\n\n"
+
+# 9b. Codebase Chat with streaming (SSE) + request_id idempotency
+@app.post("/api/repos/{id}/chat/stream")
+def chat_codebase_stream(id: str, req: ChatStreamRequest, user_id: str = Depends(get_authenticated_user_id), token: Optional[str] = Depends(get_auth_token)):
+    try:
+        supabase = get_supabase_client(token)
+        repo = supabase.table("repositories").select("id").eq("id", id).eq("user_id", user_id).execute()
+        if not repo.data:
+            raise HTTPException(status_code=403, detail="Access denied to this repository.")
+
+        # Idempotency: a repeated request_id reuses the session it resolved to.
+        session_id = req.session_id
+        known_duplicate = False
+        if req.request_id:
+            with _chat_request_lock:
+                cached = _chat_request_cache.get(req.request_id)
+            if cached:
+                session_id = cached
+                known_duplicate = True
+
+        user_message_id = None
+        if not session_id:
+            session = supabase.table("chat_sessions").insert({
+                "repository_id": id,
+                "title": req.message[:50]
+            }).execute()
+            session_id = session.data[0]["id"]
+        else:
+            sess = supabase.table("chat_sessions").select("repository_id").eq("id", session_id).execute()
+            if not sess.data or sess.data[0]["repository_id"] != id:
+                raise HTTPException(status_code=403, detail="Access denied to this chat session.")
+            # DB-backed duplicate guard: a retry of the exact same question in the
+            # same conversation reuses the existing user row (no duplicate insert).
+            dup = supabase.table("chat_messages").select("id").eq("session_id", session_id).eq("role", "user").eq("content", req.message).order("created_at", desc=True).limit(1).execute()
+            if dup.data:
+                known_duplicate = True
+                user_message_id = dup.data[0].get("id")
+
+        if req.request_id:
+            with _chat_request_lock:
+                if len(_chat_request_cache) >= _CHAT_CACHE_MAX:
+                    _chat_request_cache.clear()
+                _chat_request_cache.setdefault(req.request_id, session_id)
+
+        if user_message_id is None:
+            user_res = supabase.table("chat_messages").insert({
+                "session_id": session_id,
+                "role": "user",
+                "content": req.message,
+                "citations": []
+            }).execute()
+            if user_res and user_res.data:
+                user_message_id = user_res.data[0].get("id")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[chat] failed to resolve session for repo {id}: {e}")
+        raise HTTPException(status_code=500, detail="Unable to start chat. Please try again.")
+
+    def generate():
+        # Replay path: if this exact duplicate request was already answered, emit
+        # the persisted assistant reply instead of calling the AI again.
+        if known_duplicate:
+            existing = supabase.table("chat_messages").select("id", "content", "citations").eq("session_id", session_id).eq("role", "assistant").order("created_at", desc=True).limit(1).execute()
+            if existing and existing.data:
+                row = existing.data[0]
+                content = row.get("content") or ""
+                citations = row.get("citations") or []
+                yield from _sse("start", json.dumps({
+                    "session_id": session_id,
+                    "citations": citations,
+                    "user_message_id": user_message_id,
+                    "request_id": req.request_id,
+                    "replayed": True,
+                }))
+                yield from _sse("delta", content)
+                yield from _sse("done", json.dumps({
+                    "content": content,
+                    "citations": citations,
+                    "session_id": session_id,
+                    "user_message_id": user_message_id,
+                    "request_id": req.request_id,
+                    "replayed": True,
+                }))
+                return
+
+        # Same RAG pipeline as the non-streaming /chat endpoint.
+        try:
+            query_vector = generate_embedding(req.message)
+            matched = supabase.rpc("match_code_chunks", {
+                "query_embedding": query_vector,
+                "match_threshold": 0.25,
+                "match_count": 5,
+                "repo_id": id
+            }).execute()
+        except Exception as e:
+            print(f"[chat] vector search failed for {id}: {e}")
+            matched = type("R", (), {"data": []})()
+
+        citations = []
+        context_parts = []
+        if matched and matched.data:
+            for idx, chunk in enumerate(matched.data):
+                file_path = chunk.get("file_path")
+                chunk_text = chunk.get("chunk_text")
+                if not file_path:
+                    continue
+                if file_path not in citations:
+                    citations.append(file_path)
+                context_parts.append(f"--- File: {file_path} (Chunk {idx}) ---\n{chunk_text}")
+
+        context_str = "\n\n".join(context_parts)
+
+        prompt = f"""
+        You are an expert programming assistant helping a developer understand this codebase.
+        Answer the developer's question using the retrieved code context below.
+
+        USER QUESTION:
+        {req.message}
+
+        RETRIEVED CODE CHUNKS:
+        {context_str}
+
+        INSTRUCTIONS:
+        1. Base your answer strictly on the retrieved code chunks. If the answer cannot be found in the context, clearly explain that and offer general guidance.
+        2. Keep your answer clear, informative, and formatted in markdown.
+        3. Do NOT make up import paths or files. Use the exact files mentioned in the retrieved code chunks.
+        4. List the files referenced as source citations at the very end of your answer.
+        """
+
+        yield from _sse("start", json.dumps({
+            "session_id": session_id,
+            "citations": citations,
+            "user_message_id": user_message_id,
+            "request_id": req.request_id,
+        }))
+
+        full_reply = []
+        try:
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            for chunk in model.generate_content(prompt, stream=True):
+                text = chunk.text
+                if text:
+                    full_reply.append(text)
+                    yield from _sse("delta", text)
+        except Exception as e:
+            print(f"[chat] Gemini stream failed for session {session_id}: {e}")
+            yield from _sse("error", json.dumps({
+                "code": 502,
+                "message": "Unable to generate an answer. The AI service is temporarily unavailable, please try again.",
+                "request_id": req.request_id,
+            }))
+            return
+
+        reply = "".join(full_reply).strip()
+
+        try:
+            supabase.table("chat_messages").insert({
+                "session_id": session_id,
+                "role": "assistant",
+                "content": reply,
+                "citations": citations
+            }).execute()
+        except Exception as e:
+            print(f"[chat] failed to persist assistant reply: {e}")
+
+        yield from _sse("done", json.dumps({
+            "content": reply,
+            "citations": citations,
+            "session_id": session_id,
+            "user_message_id": user_message_id,
+            "request_id": req.request_id,
+        }))
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 # Fetch chat messages for a session
 @app.get("/api/repos/{id}/chat/sessions")

@@ -120,3 +120,157 @@
     @apply font-sans;
   }
 }
+
+/* Chat message markdown typography + syntax highlighting theme (GitHub-light,
+   tuned to the app palette). Scope is deliberately narrow so only rendered
+   AI answers are affected. */
+.chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown p {
+  @apply my-2 leading-relaxed;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  @apply mt-5 mb-2 font-bold text-[#111827];
+}
+
+.chat-markdown h1 {
+  font-size: 1.25rem;
+}
+
+.chat-markdown h2 {
+  font-size: 1.1rem;
+}
+
+.chat-markdown h3 {
+  font-size: 1rem;
+}
+
+.chat-markdown h4 {
+  font-size: 0.9rem;
+}
+
+.chat-markdown ul {
+  @apply my-2 list-disc pl-5 space-y-1;
+}
+
+.chat-markdown ol {
+  @apply my-2 list-decimal pl-5 space-y-1;
+}
+
+.chat-markdown li > ul,
+.chat-markdown li > ol {
+  margin-top: 0.25rem;
+}
+
+.chat-markdown blockquote {
+  @apply my-2 border-l-2 border-primary/40 pl-3 text-[#4B5563] italic;
+}
+
+.chat-markdown table {
+  @apply my-3 w-full border-collapse text-sm;
+}
+
+.chat-markdown th {
+  @apply border border-[#E5E7EB] bg-slate-50 px-3 py-1.5 text-left font-semibold;
+}
+
+.chat-markdown td {
+  @apply border border-[#E5E7EB] px-3 py-1.5;
+}
+
+.chat-markdown hr {
+  @apply my-4 border-[#E5E7EB];
+}
+
+.chat-markdown img {
+  @apply my-2 max-w-full rounded-lg;
+}
+
+.chat-markdown strong {
+  @apply font-semibold;
+}
+
+.hljs {
+  background: transparent;
+  color: #24292f;
+}
+
+.chat-markdown .hljs-comment,
+.chat-markdown .hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.chat-markdown .hljs-keyword,
+.chat-markdown .hljs-selector-tag,
+.chat-markdown .hljs-literal,
+.chat-markdown .hljs-doctag,
+.chat-markdown .hljs-type {
+  color: #d73a49;
+}
+
+.chat-markdown .hljs-string,
+.chat-markdown .hljs-regexp,
+.chat-markdown .hljs-addition,
+.chat-markdown .hljs-attribute {
+  color: #032f62;
+}
+
+.chat-markdown .hljs-number,
+.chat-markdown .hljs-symbol,
+.chat-markdown .hljs-template-variable {
+  color: #005cc5;
+}
+
+.chat-markdown .hljs-title,
+.chat-markdown .hljs-section,
+.chat-markdown .hljs-function .hljs-title {
+  color: #6f42c1;
+}
+
+.chat-markdown .hljs-variable,
+.chat-markdown .hljs-params {
+  color: #24292f;
+}
+
+.chat-markdown .hljs-built_in,
+.chat-markdown .hljs-builtin-name {
+  color: #e36209;
+}
+
+.chat-markdown .hljs-meta {
+  color: #6a737d;
+}
+
+.chat-markdown .hljs-selector-id,
+.chat-markdown .hljs-selector-class,
+.chat-markdown .hljs-selector-pseudo {
+  color: #005cc5;
+}
+
+.chat-markdown .hljs-deletion {
+  color: #b31d28;
+  background: #ffeef0;
+}
+
+.chat-markdown .hljs-emphasis {
+  font-style: italic;
+}
+
+.chat-markdown .hljs-strong {
+  font-weight: 600;
+}
+
+.chat-markdown .hljs-link {
+  text-decoration: underline;
+}

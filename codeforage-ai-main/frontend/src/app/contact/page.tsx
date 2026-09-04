@@ -106,7 +106,7 @@ export default function ContactPage() {
             <Badge variant="outline" className="mb-4 border-indigo-200 text-indigo-650 bg-indigo-50">Contact Us</Badge>
             <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 mb-4">Get in Touch</h1>
             <p className="text-sm text-zinc-550 leading-relaxed">
-              Have questions about repository security audits, parsing support for other languages, or deploying CodeForge AI in your team workspaces? Send us a message and we'll reply as soon as possible.
+              Have questions about repository security audits, parsing support for other languages, or deploying CodeForge AI in your team workspaces? Send us a message and we&apos;ll reply as soon as possible.
             </p>
           </div>
 
