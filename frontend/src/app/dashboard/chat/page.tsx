@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import type { Coverage } from "@/components/RagCoverage";
+import { createSSEParser } from "@/utils/sse";
 import { getApiUrl } from "@/utils/api";
 import MessageBubble, { type StreamMessage } from "@/components/chat/MessageBubble";
 
@@ -37,39 +39,6 @@ const SCROLL_PIN_THRESHOLD = 96;
  * remaining partial frame is processed as a complete event (valuable when the
  * stream ends without a trailing blank line).
  */
-function createSSEParser(onEvent: (event: string, data: string[]) => void) {
-  let buffer = "";
-  const decoder = new TextDecoder();
-
-  const processBlock = (block: string) => {
-    const lines = block.split("\n");
-    let event = "message";
-    const dataLines: string[] = [];
-    for (const line of lines) {
-      if (line.startsWith("event:")) event = line.slice(6).trim().replace(/^ +| +$/g, "");
-      else if (line.startsWith("data:")) dataLines.push(line.slice(5).replace(/^ /, ""));
-      else if (line.trim() === "" || line.startsWith(":")) continue; // keepalive/comment
-    }
-    if (dataLines.length > 0) onEvent(event, dataLines);
-  };
-
-  return {
-    feed(chunk: Uint8Array, flush = false) {
-      buffer += decoder.decode(chunk, { stream: !flush });
-      if (flush) {
-        if (buffer.trim() !== "") processBlock(buffer);
-        buffer = "";
-        return;
-      }
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() || "";
-      for (const block of parts) {
-        if (block.trim() !== "") processBlock(block);
-      }
-    },
-  };
-}
-
 function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -98,6 +67,7 @@ function ChatPageContent() {
 
   const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [coverage, setCoverage] = useState<{ repoId: string; data: Coverage }>();
   const [error, setError] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -107,6 +77,24 @@ function ChatPageContent() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [chatStatus, setChatStatus] = useState<ChatStatus>("idle");
   const [nearBottom, setNearBottom] = useState(true);
+
+  useEffect(() => {
+    if (!activeRepoId) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const { data } = await createClient().auth.getSession();
+        const response = await fetch(getApiUrl(`/api/repos/${activeRepoId}/status`), {
+          headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {},
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const status = await response.json();
+        if (!controller.signal.aborted) setCoverage({ repoId: activeRepoId, data: status.rag_coverage });
+      } catch { /* Coverage remains unavailable when the status service fails. */ }
+    })();
+    return () => controller.abort();
+  }, [activeRepoId]);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -394,6 +382,7 @@ function ChatPageContent() {
 
       const reader = res.body.getReader();
       let assistantCitations: string[] = [];
+      let terminalEvent: "done" | "error" | null = null;
 
       const finishFinalMessage = (streaming: boolean, error?: string) => {
         // Belt-and-suspenders: also persist the final state into the per-session
@@ -453,6 +442,7 @@ function ChatPageContent() {
         }
 
         if (event === "error") {
+          terminalEvent = "error";
           let friendly = "Unable to generate a response right now.";
           try {
             const j = JSON.parse(jsonData);
@@ -464,6 +454,8 @@ function ChatPageContent() {
         }
 
         if (event === "done") {
+          if (terminalEvent === "error") return;
+          terminalEvent = "done";
           try {
             const j = JSON.parse(jsonData);
             gotSessionId = j.session_id || gotSessionId;
@@ -491,8 +483,13 @@ function ChatPageContent() {
       if (isCurrent()) {
         // Belt-and-suspenders: if no terminal event arrived (e.g. the stream
         // closed early), still finalize so we never leave a stuck spinner.
-        finishFinalMessage(false);
-        if (chatStatus !== "error") setChatStatus("completed");
+        if (!terminalEvent) {
+          finishFinalMessage(false, "Connection ended before the answer completed. Please retry.");
+          setChatStatus("error");
+        } else if (terminalEvent === "done") {
+          finishFinalMessage(false);
+          setChatStatus("completed");
+        }
         if (gotSessionId && gotSessionId !== currentSessionId) {
           currentSessionIdRef.current = gotSessionId;
           setCurrentSessionId(gotSessionId);
@@ -649,6 +646,11 @@ function ChatPageContent() {
           <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New Conversation</span>
         </Button>
       </header>
+      {coverage?.repoId === activeRepoId && (coverage.data.status === "PARTIAL" || coverage.data.status === "FAILED") && (
+        <p role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Some files were not indexed. Answers may be incomplete. {coverage.data.chunks_indexed ?? "—"} / {coverage.data.chunks_expected ?? "—"} chunks indexed.
+        </p>
+      )}
 
       {/* Main Panel */}
       <div className="flex-1 flex overflow-hidden">

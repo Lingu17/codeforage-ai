@@ -1,10 +1,12 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Check, Copy, FileCode, Loader2, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import MarkdownView from "./Markdown";
+import { createClient } from "@/utils/supabase/client";
+import { getApiUrl } from "@/utils/api";
 
 export type StreamMessage = {
   id: string;
@@ -24,6 +26,24 @@ type Props = {
 };
 
 const MessageBubble = memo(function MessageBubble({ message, copied, onCopy, onRetry }: Props) {
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const openSource = async (citation: string) => {
+    const repoId = new URLSearchParams(window.location.search).get("repo_id");
+    const match = citation.match(/^(.*?):(\d+)(?:[–-](\d+))?$/);
+    const path = match ? match[1] : citation;
+    const { data } = await createClient().auth.getSession();
+    const token = data.session?.access_token;
+    if (!repoId || !token) { setSourceError("Select a repository and sign in to open sources."); return; }
+    try {
+      const params = new URLSearchParams({ file_path: path });
+      if (match) params.set("line", match[2]);
+      const response = await fetch(getApiUrl(`/api/repos/${repoId}/source?${params}`), { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error("Source unavailable. Rescan the repository and retry.");
+      const result = await response.json();
+      window.open(result.url, "_blank", "noopener,noreferrer");
+      setSourceError(null);
+    } catch { setSourceError("Source unavailable. Rescan the repository and retry."); }
+  };
   const isUser = message.role === "user";
 
   return (
@@ -83,19 +103,19 @@ const MessageBubble = memo(function MessageBubble({ message, copied, onCopy, onR
                 <FileCode className="w-3 h-3" /> Based on:
               </span>
               {message.citations.map((c: string, cIdx: number) => (
-                <Badge
-                  key={cIdx}
+                <button type="button" onClick={() => openSource(c)} aria-label={`Open source ${c}`} key={cIdx}><Badge
                   variant="outline"
                   className="bg-white hover:bg-slate-50 border-[#E5E7EB] text-[10px] text-[#6B7280] font-mono py-0.5 px-2 select-all cursor-pointer rounded-md shadow-2xs"
                 >
                   {c}
-                </Badge>
+                </Badge></button>
               ))}
             </>
           )}
         </div>
       )}
 
+      {sourceError && <p role="alert" className="text-xs text-amber-700">{sourceError}</p>}
       {!isUser && !message.streaming && !!message.error && (
         <Button
           onClick={onRetry}

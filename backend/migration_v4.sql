@@ -5,12 +5,17 @@
 
 -- 1. Drop existing unique constraint on github_id in repositories table
 -- The standard name is repositories_github_id_key.
-ALTER TABLE repositories DROP CONSTRAINT IF EXISTS repositories_github_id_key CASCADE;
+-- Refuse unexpected dependent constraints instead of silently dropping them.
+ALTER TABLE repositories DROP CONSTRAINT IF EXISTS repositories_github_id_key;
 
 -- 2. Add compound unique constraint on (github_id, user_id)
--- This allows different users to scan the same repository, while preventing 
+-- This allows different users to scan the same repository, while preventing
 -- a single user from importing the same repository multiple times.
-ALTER TABLE repositories ADD CONSTRAINT repositories_github_id_user_id_key UNIQUE (github_id, user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='repositories_github_id_user_id_key' AND conrelid='repositories'::regclass) THEN
+    ALTER TABLE repositories ADD CONSTRAINT repositories_github_id_user_id_key UNIQUE (github_id, user_id);
+  END IF;
+END $$;
 
 -- 3. Reload PostgREST Schema Cache
 NOTIFY pgrst, 'reload schema';

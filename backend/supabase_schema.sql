@@ -72,7 +72,7 @@ begin
   values (new.id, new.embedding, new.created_at);
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path=public;
 
 create or replace trigger replicate_chunk_embedding_trigger
 after insert on code_chunks
@@ -288,7 +288,5 @@ create table if not exists contact_messages (
 alter table contact_messages enable row level security;
 
 -- Policy: Allow anyone (unauthenticated/anon) to insert submissions
-create policy "Anyone can submit contact messages"
-  on contact_messages for insert to anon, authenticated
-  with check (true);
-
+-- Contact insertion requires the server service role.
+REVOKE INSERT ON contact_messages FROM anon, authenticated;

@@ -1,44 +1,47 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useCallback, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RagCoverage } from "@/components/RagCoverage";
+import { RecentScanActivity } from "@/components/RecentScanActivity";
 import { getApiUrl } from "@/utils/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FolderGit2, Search, Plus, Star, GitFork, Clock, 
-  Activity, Play, Loader2, ArrowRight, CheckCircle2, 
+import {
+  FolderGit2, Search, Plus, Star, GitFork, Clock,
+  Activity, Play, Loader2, ArrowRight, CheckCircle2,
   XCircle, Layers, MessageSquare, ShieldAlert, BookOpen,
   Trash2, RefreshCw, MoreVertical, ExternalLink, Copy, Check, FileText,
   Edit2, X, Sparkles, Server, Info, Terminal, TrendingUp, TrendingDown
 } from "lucide-react";
 import { navigateToModule } from "@/utils/navigation";
+import { parseStages, STAGE_DEFS, stageView, type ScanStages } from "@/utils/scanStages";
 
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
-  
+
   // Repos lists
   const [scannedRepos, setScannedRepos] = useState<any[]>([]);
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Ingest states
   const [importUrl, setImportUrl] = useState("");
   const [showImportModal, setShowImportModal] = useState(false);
   const [analyzingRepoId, setAnalyzingRepoId] = useState<string | null>(null);
   const [jobStatuses, setJobStatuses] = useState<Record<string, any>>({});
-  const [importVisibility, setImportVisibility] = useState<"public" | "private">("public");
-  const [importScanDepth, setImportScanDepth] = useState<"quick" | "standard" | "deep">("standard");
-  
+  const [stageStatuses, setStageStatuses] = useState<Record<string, ScanStages>>({});
+
   // Selected repo for AI Summary
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+  const selectedRepoIdRef = useRef(selectedRepoId);
   const [repoSummary, setRepoSummary] = useState<any>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
 
@@ -54,44 +57,33 @@ function DashboardContent() {
   const [copiedRepoId, setCopiedRepoId] = useState<string | null>(null);
   const [showDrawer, setShowDrawer] = useState<boolean>(false);
   const [globalStats, setGlobalStats] = useState({
-    totalFiles: 0,
-    averageHealth: 80,
-    criticalIssues: 0,
-    aiConversations: 0
+    totalFiles: null as number | null,
+    averageHealth: null as number | null,
+    criticalIssues: null as number | null,
+    aiConversations: null as number | null
   });
 
-  const fetchGlobalStats = async () => {
+  const fetchGlobalStats = useCallback(async () => {
     try {
-      const { count: filesCount } = await supabase
-        .from("repository_files")
-        .select("id", { count: "exact", head: true });
-      
-      const { data: healthData } = await supabase
-        .from("health_scores")
-        .select("overall_score");
-        
-      const { data: debtData } = await supabase
-        .from("technical_debt_reports")
-        .select("critical_count");
-        
-      const { count: chatCount } = await supabase
-        .from("chat_sessions")
-        .select("id", { count: "exact", head: true });
-        
-      const totalFiles = filesCount || 0;
-      const aiConversations = chatCount || 0;
-      
-      let averageHealth = 80;
-      if (healthData && healthData.length > 0) {
-        const sum = healthData.reduce((acc, curr) => acc + curr.overall_score, 0);
-        averageHealth = Math.round(sum / healthData.length);
+      const [files, health, debt, chats] = await Promise.all([
+        supabase.from("repository_files").select("id", { count: "exact", head: true }),
+        supabase.from("health_scores").select("repository_id,overall_score,breakdown,created_at").order("created_at", { ascending: false }).limit(1001),
+        supabase.from("technical_debt_reports").select("repository_id,critical_count,created_at").order("created_at", { ascending: false }).limit(1001),
+        supabase.from("chat_sessions").select("id", { count: "exact", head: true }),
+      ]);
+      if ([files, health, debt, chats].some(result => result.error) || (health.data?.length ?? 0) > 1000 || (debt.data?.length ?? 0) > 1000) throw new Error("Statistics unavailable");
+      const totalFiles = files.count;
+      const aiConversations = chats.count;
+      const latestHealth = new Map<string, number | null>();
+      for (const row of health.data ?? []) {
+        if (!latestHealth.has(row.repository_id)) latestHealth.set(row.repository_id, row.breakdown?.method ? row.overall_score : null);
       }
-      
-      let criticalIssues = 0;
-      if (debtData && debtData.length > 0) {
-        criticalIssues = debtData.reduce((acc, curr) => acc + curr.critical_count, 0);
-      }
-      
+      const measured = [...latestHealth.values()].filter((value): value is number => typeof value === "number");
+      const averageHealth = measured.length ? Math.round(measured.reduce((a,b) => a+b,0) / measured.length) : null;
+      const latestDebt = new Map<string, number>();
+      for (const row of debt.data ?? []) if (!latestDebt.has(row.repository_id)) latestDebt.set(row.repository_id, row.critical_count);
+      const criticalIssues = latestDebt.size ? [...latestDebt.values()].reduce((a,b) => a+b,0) : null;
+
       setGlobalStats({
         totalFiles,
         averageHealth,
@@ -99,61 +91,18 @@ function DashboardContent() {
         aiConversations
       });
     } catch (e) {
-      console.error("Error fetching global stats:", e);
+      setGlobalStats({ totalFiles: null, averageHealth: null, criticalIssues: null, aiConversations: null });
     }
-  };
+  }, [supabase]);
 
   // Close menus when clicking outside
-  useEffect(() => {
-    const handleOutsideClick = () => {
-      setActiveActionsMenu(null);
-    };
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, []);
 
-  useEffect(() => {
-    if (scannedRepos.length > 0) {
-      fetchGlobalStats();
-    }
-  }, [scannedRepos]);
 
-  useEffect(() => {
-    async function getSession() {
-      const isDemo = typeof window !== "undefined" && localStorage.getItem("demo_mode") === "true";
-      const { data } = await supabase.auth.getSession();
-      
-      if (isDemo) {
-        setSession({
-          user: {
-            id: "demo-user-id",
-            email: "guest.developer@codeforge.ai",
-            user_metadata: {
-              user_name: "guest_developer",
-              avatar_url: "https://github.com/github.png"
-            }
-          }
-        });
-        setUsername("guest_developer");
-        fetchScannedRepos();
-        fetchGithubRepos("guest_developer");
-      } else if (!data.session) {
-        router.push("/");
-      } else {
-        const user = data.session.user;
-        const name = user.user_metadata?.user_name || user.user_metadata?.preferred_username || "Developer";
-        setUsername(name);
-        fetchScannedRepos();
-        if (name) {
-          fetchGithubRepos(name, data.session?.provider_token);
-        }
-      }
-      setLoading(false);
-    }
-    getSession();
-  }, []);
 
-  const fetchScannedRepos = async () => {
+
+
+
+  const fetchScannedRepos = useCallback(async () => {
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -165,26 +114,21 @@ function DashboardContent() {
       if (res.ok) {
         const data = await res.json();
         setScannedRepos(data);
-        
-        // Auto-select first repo if none selected
-        if (data.length > 0 && !selectedRepoId) {
-          const queryId = searchParams?.get("repo_id");
+
+        if (data.length > 0) {
+          const queryId = new URLSearchParams(window.location.search).get("repo_id");
           const localId = localStorage.getItem("selected_repo_id");
-          const idToSelect = queryId || localId || data[0].id;
-          const exists = data.some((r: any) => r.id === idToSelect);
-          if (exists) {
-            setSelectedRepoId(idToSelect);
-          } else {
-            setSelectedRepoId(data[0].id);
-          }
+          const candidate = queryId || localId || data[0].id;
+          const next = data.some((row: { id: string }) => row.id === candidate) ? candidate : data[0].id;
+          setSelectedRepoId(current => current || next);
         }
       }
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [supabase]);
 
-  const fetchGithubRepos = async (name: string, providerToken?: string | null) => {
+  const fetchGithubRepos = useCallback(async (name: string, providerToken?: string | null) => {
     setLoadingGithubRepos(true);
     setGithubLoadError(false);
     try {
@@ -211,108 +155,26 @@ function DashboardContent() {
     } finally {
       setLoadingGithubRepos(false);
     }
-  };
+  }, [supabase]);
 
-  // Poll scan jobs
-  useEffect(() => {
-    if (scannedRepos.length === 0) return;
+  // Poll scan jobs. Only poll repositories whose scan is NOT terminal, so we
+  // do not hammer the backend for completed/failed repos every 2 seconds.
+  // `jobStatusesRef` avoids a stale-closure bug where the interval was being
+  // recreated (and duplicating polls) on every 2s state change.
+  const jobStatusesRef = useRef(jobStatuses);
 
-    const interval = setInterval(() => {
-      scannedRepos.forEach(async (repo) => {
-        try {
-          const { data } = await supabase.auth.getSession();
-          const token = data.session?.access_token;
-          const headers: any = {};
-          if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-          }
-          const res = await fetch(getApiUrl(`/api/repos/${repo.id}/status`), { headers });
-          if (res.ok) {
-            const statusData = await res.json();
-            setJobStatuses(prev => {
-              const current = prev[repo.id];
-              let shouldFetchSummary = false;
-              
-              if (current) {
-                // If it is a different job, only accept if the new job is newer (by started_at)
-                if (current.id !== statusData.id) {
-                  const currentStart = new Date(current.started_at || 0).getTime();
-                  const newStart = new Date(statusData.started_at || 0).getTime();
-                  if (newStart < currentStart) {
-                    // Ignore stale job status update
-                    return prev;
-                  }
-                } else {
-                  // Same job: reject progress or status regressions
-                  if (current.status === "completed" && statusData.status !== "completed") {
-                    return prev;
-                  }
-                  if (current.status === "failed" && statusData.status !== "failed" && statusData.status !== "completed") {
-                    return prev;
-                  }
-                  if (statusData.progress < current.progress) {
-                    return prev;
-                  }
-                }
-              }
-              
-              // If it just transitioned to completed, fetch summary and stats
-              if (statusData.status === "completed" && (!current || current.status !== "completed")) {
-                shouldFetchSummary = true;
-              }
-              
-              if (shouldFetchSummary) {
-                setTimeout(() => {
-                  fetchGlobalStats();
-                  if (repo.id === selectedRepoId) {
-                    fetchRepoSummary(repo.id);
-                  }
-                }, 0);
-              }
 
-              return {
-                ...prev,
-                [repo.id]: statusData
-              };
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      });
-    }, 2000);
 
-    return () => clearInterval(interval);
-  }, [scannedRepos, selectedRepoId, repoSummary]);
+
+
 
   // Fetch summary when selected repo changes
-  useEffect(() => {
-    if (selectedRepoId) {
-      localStorage.setItem("selected_repo_id", selectedRepoId);
-      fetchRepoSummary(selectedRepoId);
-      
-      const currentQueryId = searchParams?.get("repo_id");
-      if (currentQueryId !== selectedRepoId) {
-        router.replace(`/dashboard?repo_id=${selectedRepoId}`);
-      }
-    } else {
-      setRepoSummary(null);
-      
-      const currentQueryId = searchParams?.get("repo_id");
-      if (currentQueryId) {
-        router.replace(`/dashboard`);
-      }
-    }
-  }, [selectedRepoId, searchParams, router]);
+
 
   // Open import modal if query param import=true is present
-  useEffect(() => {
-    if (searchParams?.get("import") === "true") {
-      setShowImportModal(true);
-    }
-  }, [searchParams]);
 
-  const fetchRepoSummary = async (repoId: string) => {
+
+  const fetchRepoSummary = useCallback(async (repoId: string) => {
     setLoadingSummary(true);
     setRepoSummary(null);
     try {
@@ -325,16 +187,16 @@ function DashboardContent() {
       const res = await fetch(getApiUrl(`/api/repos/${repoId}/summary`), { headers });
       if (res.ok) {
         const data = await res.json();
-        setRepoSummary(data);
+        if (selectedRepoIdRef.current === repoId) setRepoSummary(data);
       } else {
-        setRepoSummary(null);
+        if (selectedRepoIdRef.current === repoId) setRepoSummary(null);
       }
-    } catch (e) {
-      setRepoSummary(null);
+    } catch {
+      if (selectedRepoIdRef.current === repoId) setRepoSummary(null);
     } finally {
-      setLoadingSummary(false);
+      if (selectedRepoIdRef.current === repoId) setLoadingSummary(false);
     }
-  };
+  }, [supabase]);
 
   const handleAnalyze = async (repo: any) => {
     setAnalyzingRepoId(repo.id.toString());
@@ -349,15 +211,9 @@ function DashboardContent() {
       if (providerToken) {
         headers["X-Github-Token"] = providerToken;
       }
-      
-      let githubIdToSend: number;
-      if (repo.id === "custom") {
-        githubIdToSend = Math.floor(Math.random() * 10000000);
-      } else if (repo.github_id) {
-        githubIdToSend = Number(repo.github_id);
-      } else {
-        githubIdToSend = Number(repo.id);
-      }
+
+      const githubIdToSend = Number(repo.github_id || repo.id);
+      if (!Number.isSafeInteger(githubIdToSend) || githubIdToSend <= 0) throw new Error('Invalid GitHub repository identity');
 
       const response = await fetch(getApiUrl("/api/repos/analyze"), {
         method: "POST",
@@ -369,23 +225,25 @@ function DashboardContent() {
           description: repo.description,
           language: repo.language,
           owner_username: repo.owner?.login || repo.owner_username || username,
-          repo_url: repo.clone_url || repo.repo_url || `https://github.com/${repo.full_name}`
+          repo_url: repo.clone_url || `https://github.com/${repo.full_name}`
         })
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         setShowImportModal(false);
         fetchScannedRepos();
+        setJobStatuses(prev => ({ ...prev, [result.repository_id]: { id: result.job_id, status: result.status, progress: 0 } }));
+        setStageStatuses(prev => ({ ...prev, [result.repository_id]: parseStages(null) }));
         setSelectedRepoId(result.repository_id);
       } else {
         const errText = await response.text();
         console.error("Analysis request failed:", errText);
-        alert(`Failed to start analysis: ${errText}`);
+        alert("Unable to start analysis. Check repository access and try again.");
       }
     } catch (e: any) {
       console.error(e);
-      alert(`Error connecting to backend API: ${e.message || e}`);
+      alert("Backend connection failed. Check your connection and try again.");
     } finally {
       setAnalyzingRepoId(null);
     }
@@ -393,28 +251,18 @@ function DashboardContent() {
 
   const handleDirectUrlAnalyze = async () => {
     if (!importUrl) return;
-    
-    const regex = /github\.com\/([^/]+)\/([^/]+)/;
-    const match = importUrl.match(regex);
-    if (!match) {
-      alert("Please enter a valid GitHub repository URL.");
-      return;
-    }
-    
-    const owner = match[1];
-    const repoName = match[2].replace(".git", "");
-    
-    const mockRepo = {
-      id: "custom",
-      name: repoName,
-      full_name: `${owner}/${repoName}`,
-      description: "Custom URL Imported Repository",
-      language: "TypeScript",
-      owner: { login: owner },
-      clone_url: importUrl
-    };
-    
-    handleAnalyze(mockRepo);
+
+    try {
+      const url = new URL(importUrl);
+      const match = url.pathname.match(/^\/([A-Za-z0-9-]+)\/([A-Za-z0-9_.-]+)\/?$/);
+      if (url.protocol !== "https:" || url.hostname !== "github.com" || !match || url.search || url.hash) throw new Error("Invalid URL");
+      const { data } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
+      if (data.session?.provider_token) headers.Authorization = `Bearer ${data.session.provider_token}`;
+      const response = await fetch(`https://api.github.com/repos/${match[1]}/${match[2].replace(/\.git$/, "")}`, { headers });
+      if (!response.ok) throw new Error("Repository unavailable");
+      await handleAnalyze(await response.json());
+    } catch { alert("Unable to access that GitHub repository. Check the URL and reconnect GitHub if needed."); }
   };
 
   const handleDeleteRepository = async (repoId: string) => {
@@ -429,7 +277,7 @@ function DashboardContent() {
         method: "DELETE",
         headers
       });
-      
+
       if (response.ok) {
         setShowDeleteModal(null);
         // Clean active repo state if active was deleted
@@ -454,7 +302,7 @@ function DashboardContent() {
   const handleRenameRepository = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showRenameModal || !newDisplayName) return;
-    
+
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -467,7 +315,7 @@ function DashboardContent() {
         headers,
         body: JSON.stringify({ display_name: newDisplayName })
       });
-      
+
       if (response.ok) {
         setShowRenameModal(null);
         setNewDisplayName("");
@@ -491,40 +339,138 @@ function DashboardContent() {
     window.print();
   };
 
-  // Calculations for dynamic analytics widgets
   const totalReposCount = scannedRepos.length;
-  
-  // Try to sum and compute metrics
-  const filesIndexed = scannedRepos.reduce((acc, curr) => {
-    // If a summary is loaded for this repo we can estimate, or sum based on files_count or placeholder
-    return acc + (curr.id === selectedRepoId && repoSummary ? repoSummary.files_count : 15);
-  }, 0);
-
-  const averageHealthScore = scannedRepos.length > 0
-    ? Math.round(scannedRepos.reduce((acc, curr) => {
-        return acc + (curr.id === selectedRepoId && repoSummary ? repoSummary.health_score : 80);
-      }, 0) / scannedRepos.length)
-    : 0;
-
-  const criticalIssuesCount = scannedRepos.reduce((acc, curr) => {
-    if (curr.id === selectedRepoId && repoSummary) {
-      return acc + (repoSummary.security?.vulnerabilities?.filter((v: any) => v.severity === "High").length || 0);
-    }
-    return acc + 0;
-  }, 0);
-
-  const mockAiQueries = totalReposCount * 12 + 4; // Mock queries sum
-
   // Get last scan time representation
   const getLastScanStr = () => {
     const job = selectedRepoId ? jobStatuses[selectedRepoId] : null;
     if (job && job.completed_at) {
-      return "2 minutes ago";
+      return new Date(job.completed_at).toLocaleString();
     }
     return "Not Scanned";
   };
 
-  if (loading) {
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setActiveActionsMenu(null);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+useEffect(() => {
+    if (scannedRepos.length > 0) {
+      fetchGlobalStats();
+    }
+  }, [scannedRepos, fetchGlobalStats]);
+
+useEffect(() => {
+    async function getSession() {
+      const { data } = await supabase.auth.getSession();
+
+      if (!data.session) {
+        router.push("/");
+      } else {
+        setSession(data.session);
+        const user = data.session.user;
+        const name = user.user_metadata?.user_name || user.user_metadata?.preferred_username || "Developer";
+        setUsername(name);
+        fetchScannedRepos();
+        if (name) {
+          fetchGithubRepos(name, data.session?.provider_token);
+        }
+      }
+      setLoading(false);
+    }
+    void getSession();
+  }, [supabase, router, fetchScannedRepos, fetchGithubRepos]);
+
+useEffect(() => {
+    jobStatusesRef.current = jobStatuses;
+  }, [jobStatuses]);
+
+useEffect(() => {
+    selectedRepoIdRef.current = selectedRepoId;
+  }, [selectedRepoId]);
+
+useEffect(() => {
+    if (scannedRepos.length === 0) return;
+
+    const isTerminal = (status?: string) =>
+      ["completed", "failed", "partial", "cancelled", "none"].includes(status ?? "none");
+
+    const interval = setInterval(async () => {
+      // Only poll repos that are genuinely still active, using fresh state.
+      const activeRepos = scannedRepos.filter((repo) => {
+        const known = jobStatusesRef.current[repo.id];
+        if (known) return !isTerminal(known.status);
+        return true;
+      });
+
+      // Nothing left to poll -> stop this interval entirely.
+      if (activeRepos.length === 0) {
+        clearInterval(interval);
+        return;
+      }
+
+      await Promise.all(activeRepos.map(async (repo) => {
+        try {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          const headers: any = {};
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+          const res = await fetch(getApiUrl(`/api/repos/${repo.id}/status`), { headers });
+          if (!res.ok) return;
+          const statusData = await res.json();
+
+          const current = jobStatusesRef.current[repo.id];
+          if (current) {
+            if (current.id !== statusData.id && new Date(statusData.started_at || 0).getTime() < new Date(current.started_at || 0).getTime()) return;
+            if (current.id === statusData.id && (current.status === "completed" || statusData.progress < current.progress)) return;
+          }
+          jobStatusesRef.current = { ...jobStatusesRef.current, [repo.id]: statusData };
+          setJobStatuses(prev => ({ ...prev, [repo.id]: statusData }));
+          setStageStatuses(prev => ({ ...prev, [repo.id]: parseStages(statusData) }));
+          if (["completed", "partial"].includes(statusData.status) && current?.status !== statusData.status) {
+            void fetchGlobalStats();
+            if (repo.id === selectedRepoIdRef.current) void fetchRepoSummary(repo.id);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }));
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [scannedRepos, supabase, fetchGlobalStats, fetchRepoSummary]);
+
+useEffect(() => {
+    if (selectedRepoId) {
+      localStorage.setItem("selected_repo_id", selectedRepoId);
+      fetchRepoSummary(selectedRepoId);
+
+      const currentQueryId = searchParams?.get("repo_id");
+      if (currentQueryId !== selectedRepoId) {
+        router.replace(`/dashboard?repo_id=${selectedRepoId}`);
+      }
+    } else {
+      setRepoSummary(null);
+
+      const currentQueryId = searchParams?.get("repo_id");
+      if (currentQueryId) {
+        router.replace(`/dashboard`);
+      }
+    }
+  }, [selectedRepoId, searchParams, router, fetchRepoSummary]);
+
+useEffect(() => {
+    if (searchParams?.get("import") === "true") {
+      setShowImportModal(true);
+    }
+  }, [searchParams]);
+
+if (loading) {
     return (
       <div className="flex flex-col h-full bg-background text-foreground min-h-screen relative animate-pulse select-none font-sans">
         {/* Top Header Skeleton */}
@@ -535,31 +481,31 @@ function DashboardContent() {
           </div>
           <div className="h-9 w-28 bg-slate-200 rounded-lg" />
         </header>
- 
+
         {/* Content Skeleton */}
         <div className="p-8 flex-1 flex flex-col gap-8">
           {/* Stats skeleton */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="bg-card border border-border p-4 rounded-xl h-20 flex flex-col justify-between">
+              <div key={i} className="bg-card border border-border p-4 rounded-xl h-auto min-h-[5rem] flex flex-col justify-between">
                 <div className="h-2 w-16 bg-slate-200 rounded" />
                 <div className="h-5 w-24 bg-slate-350 rounded mt-2" />
               </div>
             ))}
           </div>
- 
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Sidebar list skeleton */}
             <div className="lg:col-span-1 flex flex-col gap-4">
               <div className="h-3 w-24 bg-slate-200 rounded" />
               {[1, 2, 3].map((i) => (
-                <div key={i} className="p-4 rounded-xl border border-border bg-card h-20 flex flex-col justify-between">
+                <div key={i} className="p-4 rounded-xl border border-border bg-card h-auto min-h-[5rem] flex flex-col justify-between">
                   <div className="h-4 w-32 bg-slate-200 rounded" />
                   <div className="h-2.5 w-16 bg-slate-150 rounded mt-2" />
                 </div>
               ))}
             </div>
- 
+
             {/* Workspace details skeleton */}
             <div className="lg:col-span-2 flex flex-col gap-6">
               <div className="border border-border rounded-2xl bg-card p-6 h-60 flex flex-col justify-between">
@@ -586,7 +532,7 @@ function DashboardContent() {
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground min-h-screen relative">
-      
+
       {/* Top Header */}
       <header className="h-auto md:h-16 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 border-b border-border bg-card/85 backdrop-blur-md z-10 shrink-0 gap-3">
         <div className="flex flex-col">
@@ -596,7 +542,7 @@ function DashboardContent() {
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <Button 
+          <Button
             onClick={() => setShowImportModal(true)}
             className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer font-bold text-xs h-11 px-4"
           >
@@ -604,19 +550,19 @@ function DashboardContent() {
           </Button>
         </div>
       </header>
- 
+
       {/* Main Container */}
       <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col gap-8">
-        
+
         {/* Dynamic Analytics Widget Banner */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <AnalyticsCard title="Repositories" value={`${totalReposCount} Active`} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Connected</span>} />
-          <AnalyticsCard title="Architecture Maps" value={`${totalReposCount > 0 ? 1 : 0} Generated`} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Parsed</span>} />
-          <AnalyticsCard title="Files Indexed" value={globalStats.totalFiles} trend={<span className="text-[10px] text-muted-foreground font-mono">Total Chunks</span>} />
-          <AnalyticsCard title="Security Findings" value={`${globalStats.criticalIssues} Open`} trend={<span className="text-[10px] text-muted-foreground font-mono">Real-time</span>} />
-          <AnalyticsCard className="col-span-2 md:col-span-1" title="PR Reviews" value={`${globalStats.aiConversations} Completed`} trend={<span className="text-[10px] text-muted-foreground font-mono">Sessions</span>} />
+          <AnalyticsCard title="Source Health" value={globalStats.averageHealth ?? "Unavailable"} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Parsed</span>} />
+          <AnalyticsCard title="Files Indexed" value={globalStats.totalFiles ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">File metadata</span>} />
+          <AnalyticsCard title="Critical Debt" value={globalStats.criticalIssues ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">Reported critical debt</span>} />
+          <AnalyticsCard className="col-span-2 md:col-span-1" title="Chat Sessions" value={globalStats.aiConversations ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">Sessions</span>} />
         </div>
- 
+
         {/* Dashboard Content Grid */}
         {scannedRepos.length === 0 ? (
           /* Empty State Onboarding Experience (Full Page) */
@@ -625,7 +571,7 @@ function DashboardContent() {
             <div className="w-16 h-16 rounded-2xl bg-primary/5 text-primary flex items-center justify-center border border-primary/15 animate-pulse">
               <FolderGit2 className="w-8 h-8" />
             </div>
-            
+
             <div className="text-center max-w-lg">
               <h2 className="font-extrabold text-2xl text-zinc-900 mb-2">Connect Your First Repository</h2>
               <p className="text-sm text-zinc-500 leading-relaxed mt-1">
@@ -679,7 +625,7 @@ function DashboardContent() {
               </div>
             </div>
 
-            <Button 
+            <Button
               onClick={() => setShowImportModal(true)}
               className="bg-primary hover:bg-primary/95 text-white font-bold h-11 px-8 rounded-xl shadow-md cursor-pointer mt-4 flex items-center gap-2"
             >
@@ -688,25 +634,25 @@ function DashboardContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
+
             {/* Left Column: Repository Cards */}
             <div className="lg:col-span-1 flex flex-col gap-4">
               <h3 className="text-xs font-bold tracking-widest uppercase text-slate-500">Scanned Projects</h3>
-              
+
               <div className="flex flex-col gap-3">
                 {scannedRepos.map((repo) => {
                   const job = jobStatuses[repo.id];
-                  const status = job?.status || repo.status || "completed";
+                  const status = job?.status || repo.status || "none";
                   const progress = job?.progress ?? repo.progress ?? 100;
                   const isSelected = selectedRepoId === repo.id;
 
                   return (
-                    <div 
+                    <div
                       key={repo.id}
                       onClick={() => setSelectedRepoId(repo.id)}
                       className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col gap-3 relative group ${
-                        isSelected 
-                          ? "bg-card border-primary shadow-sm ring-1 ring-primary/25" 
+                        isSelected
+                          ? "bg-card border-primary shadow-sm ring-1 ring-primary/25"
                           : "bg-card border-border hover:border-slate-350"
                       }`}
                     >
@@ -717,10 +663,10 @@ function DashboardContent() {
                           </h4>
                           <span className="text-[10px] text-muted-foreground font-mono">{repo.full_name}</span>
                         </div>
-                        
+
                         {/* Settings Dropdown Button */}
                         <div className="absolute top-4 right-4 z-20">
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveActionsMenu(activeActionsMenu === repo.id ? null : repo.id);
@@ -729,11 +675,11 @@ function DashboardContent() {
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
-  
+
                           {/* Dropdown Options Popup */}
                           {activeActionsMenu === repo.id && (
                             <div className="absolute right-0 mt-1 w-44 bg-card border border-border rounded-lg shadow-lg z-30 py-1 font-sans text-xs">
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveActionsMenu(null);
@@ -743,16 +689,16 @@ function DashboardContent() {
                               >
                                 <Info className="w-3.5 h-3.5" /> View Details
                               </button>
-                              <a 
-                                href={`https://github.com/${repo.full_name}`} 
-                                target="_blank" 
+                              <a
+                                href={`https://github.com/${repo.full_name}`}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
                                 className="flex items-center gap-2 px-3 py-2 w-full text-left text-slate-700 hover:bg-slate-50 hover:text-foreground"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" /> Open on GitHub
                               </a>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveActionsMenu(null);
@@ -763,7 +709,7 @@ function DashboardContent() {
                                 <span className="flex items-center gap-2"><Copy className="w-3.5 h-3.5" /> Copy URL</span>
                                 {copiedRepoId === repo.id && <Check className="w-3 h-3 text-emerald-650" />}
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveActionsMenu(null);
@@ -774,7 +720,7 @@ function DashboardContent() {
                               >
                                 <Edit2 className="w-3.5 h-3.5" /> Rename Display
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveActionsMenu(null);
@@ -784,7 +730,7 @@ function DashboardContent() {
                               >
                                 <RefreshCw className="w-3.5 h-3.5" /> Re-scan Repo
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveActionsMenu(null);
@@ -794,7 +740,7 @@ function DashboardContent() {
                               >
                                 <FileText className="w-3.5 h-3.5" /> Export Report (PDF)
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveActionsMenu(null);
@@ -808,7 +754,7 @@ function DashboardContent() {
                           )}
                         </div>
                       </div>
-  
+
                       {/* Status Badges & Info */}
                       <div className="flex justify-between items-center text-xs mt-1">
                         {status === "completed" && (
@@ -847,7 +793,7 @@ function DashboardContent() {
                           </Badge>
                         )}
                       </div>
-  
+
                       {/* Scan Progress Timeline */}
                       {status !== "completed" && status !== "failed" && (
                         <div className="w-full bg-slate-50 border border-border rounded-xl p-3 flex flex-col gap-2 font-sans text-[10px] text-left">
@@ -855,10 +801,10 @@ function DashboardContent() {
                             <span>Scan Progress</span>
                             <span className="font-mono text-primary animate-pulse">{progress}%</span>
                           </div>
-                          
+
                           <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden mt-1">
-                            <div 
-                              className="bg-primary h-full transition-all duration-500 rounded-full" 
+                            <div
+                              className="bg-primary h-full transition-all duration-500 rounded-full"
                               style={{ width: `${progress}%` }}
                             />
                           </div>
@@ -876,11 +822,12 @@ function DashboardContent() {
                 (() => {
                   const selectedRepo = scannedRepos.find(r => r.id === selectedRepoId);
                   const activeJob = jobStatuses[selectedRepoId] || selectedRepo;
-                  const scanStatus = activeJob?.status || "completed";
-                  const isScanCompleted = scanStatus === "completed";
-                  const progressValue = activeJob?.progress ?? 100;
+                  const scanStatus = activeJob?.status || "none";
+                  const isScanCompleted = scanStatus === "completed" || scanStatus === "partial";
+                  const progressValue = activeJob?.progress ?? 0;
+                  const activeStages: ScanStages = stageStatuses[selectedRepoId] || parseStages(activeJob);
 
-                  if (scanStatus === "failed") {
+                  if (scanStatus === "failed" || scanStatus === "cancelled" || scanStatus === "none") {
                     return (
                       <div className="flex-1 flex flex-col gap-6 select-none font-sans">
                         <Card className="bg-white border-rose-200 border-2 shadow-md p-6 flex flex-col gap-5 text-left">
@@ -897,12 +844,12 @@ function DashboardContent() {
                                 The code analysis pipeline encountered a compilation or parsing error:
                               </p>
                               <div className="bg-rose-50/50 border border-rose-100 p-3 rounded-lg font-mono text-[10px] text-rose-700 mt-3 whitespace-pre-wrap leading-relaxed">
-                                {activeJob?.error_message || "AST parsing timeout or Git authentication token invalid."}
+                                {activeJob?.error_message || "Scan unavailable or interrupted. Retry the scan."}
                               </div>
                             </div>
                           </div>
                           <div className="flex justify-end gap-3 border-t border-rose-100 pt-4 mt-2">
-                            <Button 
+                            <Button
                               onClick={() => handleAnalyze(selectedRepo)}
                               className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold cursor-pointer h-9 px-4 rounded-lg shadow-sm"
                             >
@@ -918,7 +865,7 @@ function DashboardContent() {
                     /* Show Skeletons and Live Ingestion Checklist */
                     let statusTitle = "Analyzing Repository Structure";
                     let statusDesc = "Please wait. CodeForge AI background systems are scanning files, calculating health, and extracting modules.";
-                    
+
                     if (scanStatus === "queued") {
                       statusTitle = "Repository Queued for Analysis";
                       statusDesc = "Waiting for an execution worker slot to begin pipeline ingestion.";
@@ -941,82 +888,38 @@ function DashboardContent() {
                             <p className="text-xs text-zinc-500 mt-1">{statusDesc}</p>
                           </div>
 
+                          <RagCoverage coverage={activeJob?.rag_coverage} />
                           {/* Steps checklist */}
                           <div className="border border-border rounded-xl bg-zinc-50/50 p-4 flex flex-col gap-3.5 font-mono text-xs text-left">
                             <div className="flex justify-between items-center border-b border-border pb-2">
                               <span className="text-[10px] uppercase font-bold text-zinc-400">Ingestion Stage</span>
                               <span className="text-[10px] uppercase font-bold text-zinc-400">Status</span>
                             </div>
-                            
-                            {/* 1. Repository Cloned */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-zinc-650">Repository Cloned</span>
-                              {["queued", "cloning"].includes(scanStatus) ? (
-                                <span className="text-primary font-bold animate-pulse">⟳ Cloning</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">✓ Complete</span>
-                              )}
-                            </div>
 
-                            {/* 2. Dependencies Indexed */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-zinc-650">Dependencies Indexed</span>
-                              {["queued", "cloning"].includes(scanStatus) ? (
-                                <span className="text-zinc-400 font-bold">○ Pending</span>
-                              ) : scanStatus === "scanning" ? (
-                                <span className="text-primary font-bold animate-pulse">⟳ Indexing</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">✓ Complete</span>
-                              )}
-                            </div>
-
-                            {/* 3. Generating Embeddings */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-zinc-650">Generating Embeddings</span>
-                              {["queued", "cloning", "scanning"].includes(scanStatus) ? (
-                                <span className="text-zinc-400 font-bold">○ Pending</span>
-                              ) : scanStatus === "embedding" ? (
-                                <span className="text-primary font-bold animate-pulse">⟳ Embedding</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">✓ Complete</span>
-                              )}
-                            </div>
-
-                            {/* 4. Building Architecture Graph */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-zinc-650">Building Architecture Graph</span>
-                              {["queued", "cloning", "scanning", "embedding"].includes(scanStatus) ? (
-                                <span className="text-zinc-400 font-bold">○ Pending</span>
-                              ) : scanStatus === "analyzing" && progressValue < 80 ? (
-                                <span className="text-primary font-bold animate-pulse">⟳ Building</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">✓ Complete</span>
-                              )}
-                            </div>
-
-                            {/* 5. Security Analysis */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-zinc-650">Security Analysis</span>
-                              {["queued", "cloning", "scanning", "embedding"].includes(scanStatus) ? (
-                                <span className="text-zinc-400 font-bold">○ Pending</span>
-                              ) : scanStatus === "analyzing" && progressValue >= 80 && progressValue < 90 ? (
-                                <span className="text-primary font-bold animate-pulse">⟳ Auditing</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">✓ Complete</span>
-                              )}
-                            </div>
-
-                            {/* 6. Health Calculation */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-zinc-650">Health Calculation</span>
-                              {["queued", "cloning", "scanning", "embedding"].includes(scanStatus) ? (
-                                <span className="text-zinc-400 font-bold">○ Pending</span>
-                              ) : scanStatus === "analyzing" && progressValue >= 90 && progressValue < 100 ? (
-                                <span className="text-primary font-bold animate-pulse">⟳ Calculating</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">✓ Complete</span>
-                              )}
-                            </div>
+                            {STAGE_DEFS.map((def) => {
+                              const view = stageView(activeStages[def.key]);
+                              return (
+                                <div key={def.key} className="flex justify-between items-center">
+                                  <span className="text-zinc-650">{def.label}</span>
+                                  {view.tone === "done" && (
+                                    <span className="text-emerald-600 font-bold">✓ Complete</span>
+                                  )}
+                                  {view.tone === "err" && (
+                                    <span className="text-rose-600 font-bold" title={view.error}>✗ Failed</span>
+                                  )}
+                                  {view.tone === "run" && (
+                                    <span className="text-primary font-bold animate-pulse">
+                                      {def.key === "embed" && activeStages.embed?.status === "running"
+                                        ? `⟳ Embedding ${activeStages.embed?.progress ?? ""}%`
+                                        : "⟳ Running"}
+                                    </span>
+                                  )}
+                                  {view.tone === "idle" && (
+                                    <span className="text-zinc-400 font-bold">○ Pending</span>
+                                  )}
+                                </div>
+                              );
+                            })}
 
                             {/* 7. Scan Complete */}
                             <div className="flex justify-between items-center border-t border-border pt-2">
@@ -1069,40 +972,40 @@ function DashboardContent() {
                                 {repoSummary.repository.description || "No description loaded."}
                               </CardDescription>
                             </div>
-                            
+
                             {/* Health Circle */}
-                            <div 
+                            <div
                               onClick={() => router.push(`/dashboard/health?repo_id=${selectedRepoId}`)}
                               className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-90 transition-opacity"
                             >
                               <div className="relative w-16 h-16 flex items-center justify-center rounded-full border-4 border-slate-100 bg-white">
                                 <svg className="absolute w-full h-full transform -rotate-90">
-                                  <circle 
-                                    cx="32" 
-                                    cy="32" 
-                                    r="26" 
-                                    fill="transparent" 
-                                    stroke="#4F46E5" 
-                                    strokeWidth="4" 
+                                  <circle
+                                    cx="32"
+                                    cy="32"
+                                    r="26"
+                                    fill="transparent"
+                                    stroke="#4F46E5"
+                                    strokeWidth="4"
                                     strokeDasharray={`${2 * Math.PI * 26}`}
-                                    strokeDashoffset={`${2 * Math.PI * 26 * (1 - repoSummary.health_score / 100)}`}
+                                    strokeDashoffset={`${2 * Math.PI * 26 * (1 - (repoSummary.health_score ?? 0) / 100)}`}
                                     className="transition-all duration-1000"
                                   />
                                 </svg>
-                                <span className="text-base font-bold font-mono text-primary">{repoSummary.health_score}</span>
+                                <span className="text-base font-bold font-mono text-primary">{repoSummary.health_score ?? "Unavailable"}</span>
                               </div>
                               <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Health Score</span>
                             </div>
                           </div>
                         </CardHeader>
-                        
+
                         <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-xs text-left">
                           {/* Tech Stack */}
                           <div className="flex flex-col gap-1">
                             <span className="text-muted-foreground">Tech Stack</span>
                             <span className="font-semibold text-foreground flex items-center gap-1.5 truncate">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" /> 
-                              {repoSummary.tech_stack?.join(", ") || "TypeScript"}
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                              {repoSummary.tech_stack?.join(", ") || "Not detected"}
                             </span>
                           </div>
                           {/* Architecture */}
@@ -1125,19 +1028,19 @@ function DashboardContent() {
                             }`}>{repoSummary.risk_level} Risk</span>
                           </div>
                         </CardContent>
-                        
+
                         <div className="px-6 pb-4 flex justify-between border-t border-border pt-4 text-xs">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setShowDrawer(true)}
                             className="text-slate-600 hover:text-foreground text-xs gap-1.5 cursor-pointer"
                           >
                             <Info className="w-3.5 h-3.5 text-primary" /> View Details Drawer
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={handleExportPDF}
                             className="text-slate-600 hover:text-foreground text-xs gap-1.5 cursor-pointer"
                           >
@@ -1145,11 +1048,11 @@ function DashboardContent() {
                           </Button>
                         </div>
                       </Card>
-     
+
                       {/* Dynamic Nav Features Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Architecture Link */}
-                        <Card 
+                        <Card
                           onClick={() => navigateToModule(router, "architecture", selectedRepoId)}
                           className="bg-card border-border hover:border-primary/30 transition-all cursor-pointer group p-6 flex gap-4 items-start shadow-sm"
                         >
@@ -1165,9 +1068,9 @@ function DashboardContent() {
                             </p>
                           </div>
                         </Card>
-     
+
                         {/* Codebase Chat Link */}
-                        <Card 
+                        <Card
                           onClick={() => navigateToModule(router, "chat", selectedRepoId)}
                           className="bg-card border-border hover:border-primary/30 transition-all cursor-pointer group p-6 flex gap-4 items-start shadow-sm"
                         >
@@ -1183,9 +1086,9 @@ function DashboardContent() {
                             </p>
                           </div>
                         </Card>
-     
+
                         {/* Security & Debt Link */}
-                        <Card 
+                        <Card
                           onClick={() => navigateToModule(router, "security", selectedRepoId)}
                           className="bg-card border-border hover:border-primary/30 transition-all cursor-pointer group p-6 flex gap-4 items-start shadow-sm"
                         >
@@ -1201,9 +1104,9 @@ function DashboardContent() {
                             </p>
                           </div>
                         </Card>
-     
+
                         {/* PR Review Agent */}
-                        <Card 
+                        <Card
                           onClick={() => navigateToModule(router, "pr-reviews", selectedRepoId)}
                           className="bg-card border-border hover:border-primary/30 transition-all cursor-pointer group p-6 flex gap-4 items-start shadow-sm"
                         >
@@ -1215,71 +1118,17 @@ function DashboardContent() {
                               PR Review Agent <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
                             </h4>
                             <p className="text-xs text-muted-foreground leading-relaxed">
-                              Submit git diff logs to generate deep audits and safety optimizations using Gemini Pro.
+                              Submit git diff logs to generate deep audits and safety optimizations using the configured AI provider.
                             </p>
                           </div>
                         </Card>
                       </div>
-     
+
+                      <RagCoverage coverage={activeJob?.rag_coverage} />
+                      {scanStatus === "partial" && <p role="status" className="text-sm text-amber-700">Analysis is partial. Retry indexing to recover failed chunks.</p>}
                       {/* Recent Activity Log & Future Roadmap Side-by-Side */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Recent Activity Log */}
-                        <Card className="bg-card border border-border p-6 shadow-sm">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-1.5 text-left">
-                            <Clock className="w-3.5 h-3.5 text-primary animate-pulse" /> Recent Activity Log
-                          </h4>
-                          <div className="flex flex-col gap-3.5 font-sans text-xs">
-                            <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border text-left">
-                              <div className="w-3.5 h-3.5 rounded-full bg-indigo-50 border border-primary shrink-0 mt-0.5 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-foreground font-semibold">Codebase indexed</span>
-                                <span className="text-[10px] text-muted-foreground">45 sec ago • Gemini generated 768-dim embeddings</span>
-                              </div>
-                            </div>
-         
-                            <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border text-left">
-                              <div className="w-3.5 h-3.5 rounded-full bg-indigo-50 border border-primary shrink-0 mt-0.5 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-foreground font-semibold">PR review generated</span>
-                                <span className="text-[10px] text-muted-foreground">1 min ago • Code audit completed on recent Git diff</span>
-                              </div>
-                            </div>
-      
-                            <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border text-left">
-                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-50 border border-emerald-500 shrink-0 mt-0.5 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-foreground font-semibold">Security scan completed</span>
-                                <span className="text-[10px] text-muted-foreground">2 min ago • Vulnerabilities audited successfully</span>
-                              </div>
-                            </div>
-         
-                            <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border text-left">
-                              <div className="w-3.5 h-3.5 rounded-full bg-indigo-50 border border-primary shrink-0 mt-0.5 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-foreground font-semibold">Architecture generated</span>
-                                <span className="text-[10px] text-muted-foreground">3 min ago • Local file import relationships mapped</span>
-                              </div>
-                            </div>
-         
-                            <div className="flex gap-3 items-start text-left">
-                              <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border border-border shrink-0 mt-0.5 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-foreground font-semibold">Repository imported</span>
-                                <span className="text-[10px] text-muted-foreground">4 min ago • Cloned via GitHub OAuth</span>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
+                        <RecentScanActivity job={selectedRepoId ? jobStatuses[selectedRepoId] : undefined} />
 
                         {/* Future SaaS Roadmap & Features Teaser */}
                         <Card className="bg-slate-50 border border-border p-6 shadow-sm">
@@ -1325,71 +1174,15 @@ function DashboardContent() {
                       Select a repository from the scanned projects list on the left to explore its architecture, chat with the codebase, check security debt, and audit health scores.
                     </p>
                   </Card>
-   
-                  {/* Default Recent Activity Feed */}
-                  <Card className="bg-card border-border p-6 shadow-sm">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-primary" /> Recent Activity Log
-                    </h4>
-                    <div className="flex flex-col gap-3.5 font-sans text-xs">
-                      <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border">
-                        <div className="w-3.5 h-3.5 rounded-full bg-indigo-50 border border-primary shrink-0 mt-0.5 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-foreground font-semibold">Codebase indexed</span>
-                          <span className="text-[10px] text-muted-foreground">45 sec ago • Gemini generated 768-dim embeddings</span>
-                        </div>
-                      </div>
-   
-                      <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border">
-                        <div className="w-3.5 h-3.5 rounded-full bg-indigo-50 border border-primary shrink-0 mt-0.5 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-foreground font-semibold">PR review generated</span>
-                          <span className="text-[10px] text-muted-foreground">1 min ago • Code audit completed on recent Git diff</span>
-                        </div>
-                      </div>
 
-                      <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border">
-                        <div className="w-3.5 h-3.5 rounded-full bg-emerald-50 border border-emerald-500 shrink-0 mt-0.5 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-foreground font-semibold">Security scan completed</span>
-                          <span className="text-[10px] text-muted-foreground">2 min ago • Vulnerabilities audited successfully</span>
-                        </div>
-                      </div>
-   
-                      <div className="flex gap-3 items-start relative pb-3 before:absolute before:left-1.5 before:top-4 before:bottom-0 before:w-px before:bg-border">
-                        <div className="w-3.5 h-3.5 rounded-full bg-indigo-50 border border-primary shrink-0 mt-0.5 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-foreground font-semibold">Architecture generated</span>
-                          <span className="text-[10px] text-muted-foreground">3 min ago • Local file import relationships mapped</span>
-                        </div>
-                      </div>
-   
-                      <div className="flex gap-3 items-start">
-                        <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border border-border shrink-0 mt-0.5 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-foreground font-semibold">Repository imported</span>
-                          <span className="text-[10px] text-muted-foreground">4 min ago • Cloned via GitHub OAuth</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
+                  <RecentScanActivity job={selectedRepoId ? jobStatuses[selectedRepoId] : undefined} />
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
- 
+
       {/* GitHub Repo Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -1399,126 +1192,33 @@ function DashboardContent() {
                 <h3 className="text-lg font-semibold text-foreground">Import Repository</h3>
                 <p className="text-xs text-muted-foreground">Import directly via clone URL or select one of your public GitHub repositories.</p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowImportModal(false)}
                 className="text-slate-500 hover:text-foreground cursor-pointer"
               >
                 Cancel
               </Button>
             </div>
- 
+
             {/* Custom URL Import Form */}
             <div className="flex flex-col gap-4 text-xs font-sans text-left border-b border-border pb-5">
               <div className="flex flex-col gap-1.5">
                 <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider">GitHub URL</span>
-                <input 
-                  type="text" 
-                  placeholder="https://github.com/owner/repo" 
+                <input
+                  type="text"
+                  placeholder="https://github.com/owner/repo"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                   className="bg-white border border-border rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground w-full"
                 />
               </div>
- 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Visibility */}
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Visibility</span>
-                  <div className="bg-zinc-100 rounded-lg p-1 flex w-full border border-zinc-200">
-                    <button 
-                      type="button"
-                      onClick={() => setImportVisibility("public")}
-                      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        importVisibility === 'public' 
-                          ? 'bg-white border border-zinc-200 text-zinc-900 font-semibold shadow-sm' 
-                          : 'text-zinc-500 hover:text-zinc-800'
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full border transition-all ${
-                        importVisibility === 'public' ? 'bg-primary border-primary' : 'bg-transparent border-zinc-400'
-                      }`} />
-                      Public
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setImportVisibility("private")}
-                      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        importVisibility === 'private' 
-                          ? 'bg-white border border-zinc-200 text-zinc-900 font-semibold shadow-sm' 
-                          : 'text-zinc-500 hover:text-zinc-800'
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full border transition-all ${
-                        importVisibility === 'private' ? 'bg-primary border-primary' : 'bg-transparent border-zinc-400'
-                      }`} />
-                      Private
-                    </button>
-                  </div>
-                </div>
- 
-                {/* Scan Depth */}
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Scan Depth</span>
-                  <div className="bg-zinc-100 rounded-lg p-1 flex w-full border border-zinc-200 gap-1">
-                    <button 
-                      type="button"
-                      onClick={() => setImportScanDepth("quick")}
-                      className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
-                        importScanDepth === 'quick' 
-                          ? 'bg-white border border-zinc-200 text-zinc-900 font-semibold shadow-sm' 
-                          : 'text-zinc-550 hover:text-zinc-800'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full border transition-all ${
-                          importScanDepth === 'quick' ? 'bg-primary border-primary' : 'bg-transparent border-zinc-400'
-                        }`} />
-                        <span className="font-semibold">Quick</span>
-                      </span>
-                      <span className="text-[9px] text-muted-foreground mt-0.5">~30 sec</span>
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setImportScanDepth("standard")}
-                      className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
-                        importScanDepth === 'standard' 
-                          ? 'bg-white border border-zinc-200 text-zinc-900 font-semibold shadow-sm' 
-                          : 'text-zinc-550 hover:text-zinc-800'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full border transition-all ${
-                          importScanDepth === 'standard' ? 'bg-primary border-primary' : 'bg-transparent border-zinc-400'
-                        }`} />
-                        <span className="font-semibold">Standard</span>
-                      </span>
-                      <span className="text-[9px] text-muted-foreground mt-0.5">~2 min</span>
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setImportScanDepth("deep")}
-                      className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
-                        importScanDepth === 'deep' 
-                          ? 'bg-white border border-zinc-200 text-zinc-900 font-semibold shadow-sm' 
-                          : 'text-zinc-550 hover:text-zinc-800'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full border transition-all ${
-                          importScanDepth === 'deep' ? 'bg-primary border-primary' : 'bg-transparent border-zinc-400'
-                        }`} />
-                        <span className="font-semibold">Deep</span>
-                      </span>
-                      <span className="text-[9px] text-muted-foreground mt-0.5">~5 min</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
- 
-              <Button 
-                onClick={handleDirectUrlAnalyze} 
+
+              <p className="text-xs text-zinc-600">Access follows your GitHub permissions. The standard source scan uses the repository default branch.</p>
+
+              <Button
+                onClick={handleDirectUrlAnalyze}
                 disabled={analyzingRepoId !== null || !importUrl.trim()}
                 className="bg-primary hover:bg-primary/95 text-white cursor-pointer font-bold text-xs h-11 w-full rounded-xl mt-2 flex items-center justify-center gap-1.5"
               >
@@ -1528,22 +1228,22 @@ function DashboardContent() {
                 {analyzingRepoId === 'custom' ? "Analyzing Repository..." : "Analyze Repository"}
               </Button>
             </div>
- 
+
             <div className="border-t border-border pt-4 flex-1 flex flex-col min-h-0">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Your GitHub Repositories</span>
                 <div className="relative w-48">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-450" />
-                  <input 
-                    type="text" 
-                    placeholder="Filter repos..." 
+                  <input
+                    type="text"
+                    placeholder="Filter repos..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-white border border-border rounded-md pl-8 pr-3 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-full text-foreground"
                   />
                 </div>
               </div>
- 
+
               <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
                 {loadingGithubRepos ? (
                   /* Loading Skeletons */
@@ -1571,7 +1271,7 @@ function DashboardContent() {
                         <span>• API rate limit exceeded</span>
                       </div>
                     </div>
-                    <Button 
+                    <Button
                       size="sm"
                       onClick={() => fetchGithubRepos(username, session?.provider_token)}
                       className="bg-slate-100 hover:bg-primary hover:text-white border border-border text-[10px] h-8 px-4 mt-1 font-bold cursor-pointer rounded-lg transition-colors text-slate-700"
@@ -1585,7 +1285,7 @@ function DashboardContent() {
                   </div>
                 ) : (
                   githubRepos.filter(repo => repo.name.toLowerCase().includes(searchQuery.toLowerCase())).map((repo) => (
-                    <div 
+                    <div
                       key={repo.id}
                       className="p-3 bg-slate-50 border border-border rounded-lg flex items-center justify-between hover:border-primary/50 transition-colors"
                     >
@@ -1593,8 +1293,8 @@ function DashboardContent() {
                         <span className="font-medium text-sm text-foreground truncate block">{repo.name}</span>
                         <span className="text-[10px] text-muted-foreground line-clamp-1">{repo.description || "No description."}</span>
                       </div>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         onClick={() => handleAnalyze(repo)}
                         disabled={analyzingRepoId !== null}
                         className="bg-primary hover:bg-primary/95 text-white text-xs px-3 h-8 flex items-center gap-1 font-semibold transition-colors cursor-pointer rounded-lg"
@@ -1603,7 +1303,7 @@ function DashboardContent() {
                           <Loader2 className="w-3 h-3 animate-spin mr-1" />
                         ) : (
                           <Play className="w-3 h-3" />
-                        )} 
+                        )}
                         {analyzingRepoId === repo.id.toString() ? "Queuing..." : "Analyze"}
                       </Button>
                     </div>
@@ -1614,7 +1314,7 @@ function DashboardContent() {
           </div>
         </div>
       )}
- 
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -1628,14 +1328,14 @@ function DashboardContent() {
               </p>
             </div>
             <div className="flex gap-3 justify-end">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setShowDeleteModal(null)}
                 className="text-slate-500 hover:text-foreground text-xs cursor-pointer h-9 px-4"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleDeleteRepository(showDeleteModal)}
                 className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold cursor-pointer h-9 px-4"
               >
@@ -1645,7 +1345,7 @@ function DashboardContent() {
           </div>
         </div>
       )}
- 
+
       {/* Rename Display Name Modal */}
       {showRenameModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -1656,24 +1356,24 @@ function DashboardContent() {
               </h3>
               <p className="text-[10px] text-slate-500">Update the label displayed on your dashboard scanned projects cards.</p>
             </div>
-            <input 
-              type="text" 
-              placeholder="Display Name" 
+            <input
+              type="text"
+              placeholder="Display Name"
               required
               value={newDisplayName}
               onChange={(e) => setNewDisplayName(e.target.value)}
               className="bg-white border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground w-full"
             />
             <div className="flex gap-3 justify-end">
-              <Button 
+              <Button
                 type="button"
-                variant="ghost" 
+                variant="ghost"
                 onClick={() => setShowRenameModal(null)}
                 className="text-slate-500 hover:text-foreground text-xs cursor-pointer h-9 px-4"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/95 text-white text-xs font-semibold cursor-pointer h-9 px-4"
               >
@@ -1683,14 +1383,14 @@ function DashboardContent() {
           </form>
         </div>
       )}
- 
+
       {/* Repository Details sliding panel / Drawer */}
       {showDrawer && repoSummary && (
         <div className="fixed inset-0 z-40 flex justify-end font-sans">
           {/* Overlay background */}
-          <div 
+          <div
             onClick={() => setShowDrawer(false)}
-            className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" 
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
           />
           {/* Drawer container */}
           <div className="relative w-full max-w-md bg-card h-full shadow-2xl border-l border-border flex flex-col p-6 overflow-y-auto text-left gap-6 animate-in slide-in-from-right duration-300">
@@ -1702,14 +1402,14 @@ function DashboardContent() {
                 <h3 className="text-lg font-bold text-foreground">{repoSummary.repository.display_name || repoSummary.repository.name}</h3>
                 <span className="text-[10px] text-muted-foreground font-mono">{repoSummary.repository.full_name}</span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowDrawer(false)}
                 className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
- 
+
             <div className="flex flex-col gap-4 text-xs text-slate-700">
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-slate-500">Owner / Author</span>
@@ -1739,12 +1439,12 @@ function DashboardContent() {
               </div>
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-slate-500">Health Index Grade</span>
-                <span className="text-emerald-600 font-mono font-bold">{repoSummary.health_score} / 100</span>
+                <span className="text-emerald-600 font-mono font-bold">{repoSummary.health_score ?? "Unavailable"} / 100</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-slate-500">Security Score</span>
                 <span className="text-emerald-600 font-mono font-bold">
-                  {repoSummary.security?.security_score || 80} / 100
+                  {repoSummary.security?.security_score ?? "Unavailable"} / 100
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
@@ -1760,8 +1460,8 @@ function DashboardContent() {
                 </span>
               </div>
             </div>
- 
-            <Button 
+
+            <Button
               onClick={() => {
                 setShowDrawer(false);
                 handleExportPDF();
@@ -1773,26 +1473,26 @@ function DashboardContent() {
           </div>
         </div>
       )}
- 
+
     </div>
   );
 }
- 
+
 function AnalyticsCard({ title, value, trend, className }: { title: string; value: string | number; trend?: React.ReactNode; className?: string }) {
   return (
-    <Card className={`bg-card border-border p-4 flex flex-col justify-between h-20 text-left relative overflow-hidden shadow-sm ${className || ""}`}>
+    <Card className={`bg-card border-border p-4 flex flex-col justify-between h-auto min-h-[5rem] text-left relative overflow-hidden shadow-sm ${className || ""}`}>
       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{title}</span>
-      <div className="flex justify-between items-baseline mt-1">
+      <div className="flex justify-between items-baseline mt-1 gap-2 flex-wrap">
         <span className="text-lg font-bold font-mono text-foreground leading-none">{value}</span>
         {trend}
       </div>
     </Card>
   );
 }
- 
+
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background text-foreground flex items-center justify-center font-mono text-xs animate-pulse">Loading CodeForge AI Dashboard...</div>}>
+    <Suspense fallback={<div aria-label="Loading dashboard" className="p-6 animate-pulse space-y-6"><div className="h-12 bg-slate-100 rounded" /><div className="h-64 bg-slate-100 rounded" /></div>}>
       <DashboardContent />
     </Suspense>
   );

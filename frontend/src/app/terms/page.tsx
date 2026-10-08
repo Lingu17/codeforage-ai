@@ -56,7 +56,7 @@ export default function TermsPage() {
           <div className="flex flex-col gap-2">
             <h2 className="text-sm font-bold text-white flex items-center gap-1.5"><Scale className="w-4 h-4 text-primary" /> 3. Service Limitations & Disclaimer</h2>
             <p className="text-justify">
-              CodeForge AI utilizes static parsers and Generative AI (Google Gemini APIs) to compile code metrics, security warnings, and RAG answers. While we strive for accuracy, AI models can produce hallucinations, wrong architecture maps, or false security warnings. All generated reports, quality grades, and PR review comments are provided "as is" and should be reviewed by qualified software engineers before merge.
+              CodeForge AI utilizes static parsers and Generative AI (Google Gemini APIs) to compile code metrics, security warnings, and RAG answers. While we strive for accuracy, AI models can produce hallucinations, wrong architecture maps, or false security warnings. All generated reports, quality grades, and PR review comments are provided &quot;as is&quot; and should be reviewed by qualified software engineers before merge.
             </p>
           </div>
 

@@ -4,18 +4,32 @@
 -- =====================================================================
 
 -- 1. Rename scan_jobs to repository_scans if scan_jobs exists
-ALTER TABLE IF EXISTS scan_jobs RENAME TO repository_scans;
+DO $$ BEGIN
+  IF to_regclass('public.scan_jobs') IS NOT NULL THEN
+    IF to_regclass('public.repository_scans') IS NOT NULL THEN
+      RAISE EXCEPTION 'Both legacy and current scan tables exist; inspect before migrating';
+    END IF;
+    ALTER TABLE scan_jobs RENAME TO repository_scans;
+  END IF;
+END $$;
 
 -- 2. Rename code_files to repository_files if code_files exists
-ALTER TABLE IF EXISTS code_files RENAME TO repository_files;
+DO $$ BEGIN
+  IF to_regclass('public.code_files') IS NOT NULL THEN
+    IF to_regclass('public.repository_files') IS NOT NULL THEN
+      RAISE EXCEPTION 'Both legacy and current file tables exist; inspect before migrating';
+    END IF;
+    ALTER TABLE code_files RENAME TO repository_files;
+  END IF;
+END $$;
 
 -- 3. Add file_id column to code_chunks referencing repository_files(id) if not exists
 ALTER TABLE code_chunks ADD COLUMN IF NOT EXISTS file_id uuid REFERENCES repository_files(id) ON DELETE CASCADE;
 
--- 4. Upgrade health_scores schema to include testing/performance and drop old debt_score
-ALTER TABLE health_scores ADD COLUMN IF NOT EXISTS testing_score integer DEFAULT 80;
-ALTER TABLE health_scores ADD COLUMN IF NOT EXISTS performance_score integer DEFAULT 80;
-ALTER TABLE health_scores DROP COLUMN IF EXISTS debt_score;
+-- 4. Add measured-score columns. Preserve legacy debt_score data.
+ALTER TABLE health_scores ADD COLUMN IF NOT EXISTS testing_score integer;
+ALTER TABLE health_scores ADD COLUMN IF NOT EXISTS performance_score integer;
+-- The old debt_score column is retained for backward compatibility.
 
 -- 5. Create embeddings table to store RAG vectors separately
 CREATE TABLE IF NOT EXISTS embeddings (
@@ -33,7 +47,7 @@ BEGIN
   VALUES (new.id, new.embedding, new.created_at);
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS replicate_chunk_embedding_trigger ON code_chunks;
 CREATE TRIGGER replicate_chunk_embedding_trigger
@@ -64,37 +78,35 @@ DROP POLICY IF EXISTS "Users can manage repository_files for their repositories"
 DROP POLICY IF EXISTS "Users can manage code_chunks for their repositories" ON code_chunks;
 DROP POLICY IF EXISTS "Users can manage embeddings for their repositories" ON embeddings;
 
--- Policy for repositories: Allow claiming if user_id is NULL
+-- Policy for repositories: Only allow the authenticated owner
 CREATE POLICY "Authenticated users can manage repositories"
   ON repositories FOR ALL TO authenticated
-  USING (user_id IS NULL OR auth.uid() = user_id)
+  USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Policy for repository_scans
 CREATE POLICY "Users can manage repository_scans for their repositories"
   ON repository_scans FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_scans.repository_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)))
-  WITH CHECK (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_scans.repository_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)));
+  USING (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_scans.repository_id AND repositories.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_scans.repository_id AND repositories.user_id = auth.uid()));
 
 -- Policy for repository_files
 CREATE POLICY "Users can manage repository_files for their repositories"
   ON repository_files FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_files.repository_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)))
-  WITH CHECK (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_files.repository_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)));
+  USING (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_files.repository_id AND repositories.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = repository_files.repository_id AND repositories.user_id = auth.uid()));
 
 -- Policy for code_chunks
 CREATE POLICY "Users can manage code_chunks for their repositories"
   ON code_chunks FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = code_chunks.repository_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)))
-  WITH CHECK (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = code_chunks.repository_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)));
+  USING (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = code_chunks.repository_id AND repositories.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM repositories WHERE repositories.id = code_chunks.repository_id AND repositories.user_id = auth.uid()));
 
 -- Policy for embeddings
 CREATE POLICY "Users can manage embeddings for their repositories"
   ON embeddings FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM code_chunks JOIN repositories ON code_chunks.repository_id = repositories.id WHERE code_chunks.id = embeddings.chunk_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)))
-  WITH CHECK (EXISTS (SELECT 1 FROM code_chunks JOIN repositories ON code_chunks.repository_id = repositories.id WHERE code_chunks.id = embeddings.chunk_id AND (repositories.user_id = auth.uid() OR repositories.user_id IS NULL)));
+  USING (EXISTS (SELECT 1 FROM code_chunks JOIN repositories ON code_chunks.repository_id = repositories.id WHERE code_chunks.id = embeddings.chunk_id AND repositories.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM code_chunks JOIN repositories ON code_chunks.repository_id = repositories.id WHERE code_chunks.id = embeddings.chunk_id AND repositories.user_id = auth.uid()));
 
 -- 9. Reload PostgREST Schema Cache
 NOTIFY pgrst, 'reload schema';
-
-

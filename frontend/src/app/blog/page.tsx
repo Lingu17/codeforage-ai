@@ -152,7 +152,7 @@ export default function BlogPage() {
           </Badge>
           <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 font-sans">Engineering Blog</h1>
           <p className="text-sm text-zinc-500 leading-relaxed max-w-2xl font-sans">
-            In-depth guides, architectural analyses, and engineering lessons from building CodeForge AI's code indexing and RAG systems.
+            In-depth guides, architectural analyses, and engineering lessons from building CodeForge AI&apos;s code indexing and RAG systems.
           </p>
         </div>
 
@@ -186,10 +186,10 @@ export default function BlogPage() {
                 <CardDescription className="text-zinc-500 text-xs leading-relaxed line-clamp-3">
                   {post.summary}
                 </CardDescription>
-                <Button 
-                  onClick={() => setSelectedPost(post)} 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  onClick={() => setSelectedPost(post)}
+                  variant="ghost"
+                  size="sm"
                   className="w-fit p-0 h-auto text-primary hover:text-primary/80 flex items-center gap-1 cursor-pointer font-bold text-xs mt-2"
                 >
                   Read Summary <ArrowRight className="w-3.5 h-3.5" />
@@ -210,7 +210,7 @@ export default function BlogPage() {
                 Stay updated on platform engineering updates, technical articles, and pgvector performance checklists. No spam, ever.
               </p>
             </div>
-            
+
             <form onSubmit={handleSubscribe} className="flex gap-2 w-full md:w-auto shrink-0 max-w-sm">
               {newsletterSubscribed ? (
                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-600 px-4 py-2.5 rounded-lg text-xs font-semibold w-full text-center">
@@ -218,10 +218,10 @@ export default function BlogPage() {
                 </div>
               ) : (
                 <>
-                  <input 
-                    type="email" 
-                    required 
-                    placeholder="name@company.com" 
+                  <input
+                    type="email"
+                    required
+                    placeholder="name@company.com"
                     value={newsletterEmail}
                     onChange={(e) => setNewsletterEmail(e.target.value)}
                     className="bg-white border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900 flex-1 md:w-56"
@@ -258,7 +258,7 @@ export default function BlogPage() {
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {selectedPost.readTime}</span>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedPost(null)}
                 className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
               >
@@ -289,7 +289,7 @@ export default function BlogPage() {
 
             <div className="flex justify-between items-center border-t border-border pt-4 mt-2">
               <span className="text-[10px] text-zinc-400 font-mono italic">Full article release: Coming Q3 2026</span>
-              <Button 
+              <Button
                 onClick={() => {
                   setSelectedPost(null);
                   setNewsletterSubscribed(false);

@@ -19,11 +19,10 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 -- 3. Enable RLS on contact_messages
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 
--- 4. Policy: Allow anyone (unauthenticated/anon) to insert submissions
+-- 4. Remove legacy anonymous contact insertion; use the server-only role.
 DROP POLICY IF EXISTS "Anyone can submit contact messages" ON contact_messages;
-CREATE POLICY "Anyone can submit contact messages"
-  ON contact_messages FOR INSERT TO anon, authenticated
-  WITH CHECK (true);
+-- Contact insertion requires the server service role.
+REVOKE INSERT ON contact_messages FROM anon, authenticated;
 
 -- 5. Reload PostgREST Schema Cache
 NOTIFY pgrst, 'reload schema';
