@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface Node {
   id: string;
@@ -23,16 +23,15 @@ interface Edge {
 
 export default function ThreeBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const [targetMouse, setTargetMouse] = useState({ x: 0, y: 0 });
+  const targetMouse = useRef({ x: 0, y: 0 });
 
   // Mouse Move listener for Parallax
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setTargetMouse({
+      targetMouse.current = {
         x: (e.clientX / window.innerWidth - 0.5) * 45,
         y: (e.clientY / window.innerHeight - 0.5) * 45,
-      });
+      };
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
@@ -61,21 +60,21 @@ export default function ThreeBackground() {
     const nodes: Node[] = [
       // Layer 0: GitHub Repository
       { id: "repo", name: "GitHub Repository", layer: 0, relX: 0.1, relY: 0.5, floatOffset: 0, floatSpeed: 0.0006, amplitude: 10, currentX: 0, currentY: 0 },
-      
+
       // Layer 1: Repository Scanner
       { id: "scanner", name: "Repository Scanner", layer: 1, relX: 0.25, relY: 0.5, floatOffset: 1, floatSpeed: 0.0007, amplitude: 12, currentX: 0, currentY: 0 },
-      
+
       // Layer 2: Embedding Pipeline
       { id: "embedder", name: "Embedding Pipeline", layer: 2, relX: 0.4, relY: 0.5, floatOffset: 2, floatSpeed: 0.0008, amplitude: 14, currentX: 0, currentY: 0 },
-      
+
       // Layer 3: Vector Database
       { id: "vectordb", name: "Vector Database", layer: 3, relX: 0.55, relY: 0.5, floatOffset: 3, floatSpeed: 0.0006, amplitude: 10, currentX: 0, currentY: 0 },
-      
+
       // Layer 4: Parallel Engines
       { id: "arch_intel", name: "Architecture Engine", layer: 4, relX: 0.72, relY: 0.3, floatOffset: 4, floatSpeed: 0.0009, amplitude: 12, currentX: 0, currentY: 0 },
       { id: "security", name: "Security Scanner", layer: 4, relX: 0.72, relY: 0.5, floatOffset: 5, floatSpeed: 0.0007, amplitude: 10, currentX: 0, currentY: 0 },
       { id: "code_chat", name: "Codebase Chat", layer: 4, relX: 0.72, relY: 0.7, floatOffset: 6, floatSpeed: 0.0005, amplitude: 8, currentX: 0, currentY: 0 },
-      
+
       // Layer 5: PR Review Engine
       { id: "pr_review", name: "PR Review Engine", layer: 5, relX: 0.88, relY: 0.5, floatOffset: 7, floatSpeed: 0.0006, amplitude: 10, currentX: 0, currentY: 0 },
     ];
@@ -114,8 +113,8 @@ export default function ThreeBackground() {
       ctx.clearRect(0, 0, width, height);
 
       // Smooth interpolation for mouse parallax
-      currentOffsetX += (targetMouse.x - currentOffsetX) * 0.04;
-      currentOffsetY += (targetMouse.y - currentOffsetY) * 0.04;
+      currentOffsetX += (targetMouse.current.x - currentOffsetX) * 0.04;
+      currentOffsetY += (targetMouse.current.y - currentOffsetY) * 0.04;
 
       // Update Node positions (float animation)
       nodes.forEach((node) => {
@@ -133,7 +132,7 @@ export default function ThreeBackground() {
         // Draw Edge Line
         ctx.beginPath();
         ctx.moveTo(fromNode.currentX, fromNode.currentY);
-        
+
         // Draw curvy connection lines
         const controlX = (fromNode.currentX + toNode.currentX) / 2;
         ctx.bezierCurveTo(
@@ -237,13 +236,13 @@ export default function ThreeBackground() {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", handleResize);
     };
-  }, [mouse]);
+  }, []);
 
   return (
     <div className="fixed inset-0 -z-10 w-full h-full pointer-events-none overflow-hidden bg-[#F8FAFC]">
       {/* Radial soft indigo bloom */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-b from-indigo-500/10 to-transparent rounded-full blur-[130px] pointer-events-none" />
-      
+
       {/* Clean Dotted Grid Background */}
       <div className="absolute inset-0 bg-[radial-gradient(#E2E8F0_1.5px,transparent_1.5px)] bg-[size:32px_32px] opacity-75" />
 

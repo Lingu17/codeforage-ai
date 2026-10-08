@@ -106,7 +106,7 @@ export default function ContactPage() {
             <Badge variant="outline" className="mb-4 border-indigo-200 text-indigo-650 bg-indigo-50">Contact Us</Badge>
             <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 mb-4">Get in Touch</h1>
             <p className="text-sm text-zinc-550 leading-relaxed">
-              Have questions about repository security audits, parsing support for other languages, or deploying CodeForge AI in your team workspaces? Send us a message and we'll reply as soon as possible.
+              Have questions about repository security audits, parsing support for other languages, or deploying CodeForge AI in your team workspaces? Send us a message and we&apos;ll reply as soon as possible.
             </p>
           </div>
 
@@ -152,10 +152,10 @@ export default function ContactPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] uppercase font-bold text-zinc-400">Your Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
-                  placeholder="John Doe" 
+                  aria-label="Name" placeholder="John Doe"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   className="bg-zinc-50 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
@@ -164,10 +164,10 @@ export default function ContactPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] uppercase font-bold text-zinc-400">Email Address</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   required
-                  placeholder="john@example.com" 
+                  aria-label="Email address" placeholder="john@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="bg-zinc-50 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
@@ -176,10 +176,10 @@ export default function ContactPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] uppercase font-bold text-zinc-400">Subject</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
-                  placeholder="Inquiry about workspaces" 
+                  aria-label="Subject" placeholder="Inquiry about workspaces"
                   value={formData.subject}
                   onChange={(e) => setFormData({...formData, subject: e.target.value})}
                   className="bg-zinc-50 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
@@ -188,10 +188,10 @@ export default function ContactPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] uppercase font-bold text-zinc-400">Message</label>
-                <textarea 
+                <textarea
                   required
                   rows={4}
-                  placeholder="Write your message here..." 
+                  aria-label="Message" placeholder="Write your message here..."
                   value={formData.message}
                   onChange={(e) => setFormData({...formData, message: e.target.value})}
                   className="bg-zinc-50 border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
@@ -205,8 +205,8 @@ export default function ContactPage() {
                 <span className="text-[10px] text-rose-600 font-mono font-semibold">Failed to submit message. Please try again.</span>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={submitStatus === "sending"}
                 className="bg-primary hover:bg-primary/90 text-white h-11 text-xs font-semibold cursor-pointer w-full mt-2 shadow-sm rounded-lg"
               >

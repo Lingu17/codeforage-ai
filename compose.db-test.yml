@@ -1,0 +1,23 @@
+services:
+  db-test:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: codeforge_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: disposable-test-only
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d codeforge_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - ./backend/tests/db_bootstrap.sql:/docker-entrypoint-initdb.d/00-auth.sql:ro
+      - ./backend/supabase_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/migration_v3.sql:/docker-entrypoint-initdb.d/03.sql:ro
+      - ./backend/migration_v4.sql:/docker-entrypoint-initdb.d/04.sql:ro
+      - ./backend/migration_v5.sql:/docker-entrypoint-initdb.d/05.sql:ro
+      - ./backend/migration_v6.sql:/docker-entrypoint-initdb.d/06.sql:ro
+      - ./backend/migration_v7.sql:/docker-entrypoint-initdb.d/07.sql:ro
+      - ./backend/tests:/tests:ro

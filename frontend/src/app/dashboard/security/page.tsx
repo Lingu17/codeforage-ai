@@ -1,58 +1,37 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useCallback, useState, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Loader2, ArrowLeft, ShieldAlert, AlertCircle, 
+import {
+  Loader2, ArrowLeft, ShieldAlert, AlertCircle,
   Terminal, ShieldCheck, Zap, Activity, Bug
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { openRepositorySource } from "@/utils/source";
 import { getApiUrl } from "@/utils/api";
 
 function SecurityPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  
+
   const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [securityData, setSecurityData] = useState<any>(null);
   const [debtData, setDebtData] = useState<any>(null);
+  const [severityFilter, setSeverityFilter] = useState("All");
+  const [sourceError, setSourceError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const queryId = searchParams.get("repo_id");
-    const localId = localStorage.getItem("selected_repo_id");
-    
-    if (!queryId && localId) {
-      router.replace(`${pathname}?repo_id=${localId}`);
-      return;
-    }
-    
-    const id = queryId || localId;
-    if (!id) {
-      setActiveRepoId(null);
-      setLoading(false);
-      return;
-    }
-    setActiveRepoId(id);
-  }, [searchParams, pathname, router]);
 
-  useEffect(() => {
-    if (activeRepoId) {
-      setSecurityData(null);
-      setDebtData(null);
-      setError(false);
-      setLoading(true);
-      fetchReports();
-    }
-  }, [activeRepoId]);
 
-  const fetchReports = async () => {
+
+
+  const fetchReports = useCallback(async () => {
     if (!activeRepoId) return;
     setLoading(true);
     setError(false);
@@ -81,9 +60,37 @@ function SecurityPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeRepoId]);
 
-  if (loading) {
+  useEffect(() => {
+    const queryId = searchParams.get("repo_id");
+    const localId = localStorage.getItem("selected_repo_id");
+
+    if (!queryId && localId) {
+      router.replace(`${pathname}?repo_id=${localId}`);
+      return;
+    }
+
+    const id = queryId || localId;
+    if (!id) {
+      setActiveRepoId(null);
+      setLoading(false);
+      return;
+    }
+    setActiveRepoId(id);
+  }, [searchParams, pathname, router]);
+
+useEffect(() => {
+    if (activeRepoId) {
+      setSecurityData(null);
+      setDebtData(null);
+      setError(false);
+      setLoading(true);
+      fetchReports();
+    }
+  }, [activeRepoId, fetchReports]);
+
+if (loading) {
     return (
       <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen animate-pulse select-none font-sans text-left">
         {/* Header Skeleton */}
@@ -99,7 +106,7 @@ function SecurityPageContent() {
         <div className="p-8 flex-1 flex flex-col md:flex-row gap-8">
           <div className="flex-1 flex flex-col gap-6">
             <div className="h-4 w-32 bg-slate-200 rounded" />
-            
+
             {/* Mock security issues list skeleton */}
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-white border border-[#E5E7EB] p-5 flex flex-col gap-3 rounded-xl shadow-xs">
@@ -112,7 +119,7 @@ function SecurityPageContent() {
               </div>
             ))}
           </div>
-          
+
           <div className="w-full md:w-80 flex flex-col gap-6 shrink-0">
             <div className="h-4 w-28 bg-slate-200 rounded" />
             <div className="border border-[#E5E7EB] rounded-2xl bg-white p-5 h-44 flex flex-col justify-between shadow-sm">
@@ -134,9 +141,9 @@ function SecurityPageContent() {
         {/* Header */}
         <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => router.push(`/dashboard`)}
               className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
             >
@@ -162,6 +169,9 @@ function SecurityPageContent() {
     );
   }
 
+  if (activeRepoId && (securityData?.security_score == null || debtData?.debt_score == null)) {
+    return <div className="p-8"><h2 className="font-semibold">Analysis unavailable</h2><p className="text-sm mt-2">Run a scan to collect security and debt results. Missing results do not indicate a clean repository.</p><Button onClick={fetchReports} className="mt-4">Retry</Button></div>;
+  }
   const hasSecurityIssues = securityData?.vulnerabilities?.length > 0;
   const hasDebtIssues = debtData?.issues?.length > 0;
 
@@ -170,9 +180,9 @@ function SecurityPageContent() {
       <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen">
         <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => router.push("/dashboard")}
               className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
             >
@@ -184,10 +194,10 @@ function SecurityPageContent() {
             </div>
           </div>
         </header>
-        <EmptyState 
-          title="No Repository Connected" 
-          description="Import a repository to start performing security vulnerability audits." 
-          action="Import Repository" 
+        <EmptyState
+          title="No Repository Connected"
+          description="Import a repository to start performing security vulnerability audits."
+          action="Import Repository"
         />
       </div>
     );
@@ -198,9 +208,9 @@ function SecurityPageContent() {
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0 animate-in fade-in duration-200">
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.push(`/dashboard`)}
             className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
           >
@@ -215,7 +225,7 @@ function SecurityPageContent() {
 
       {/* Main Container */}
       <div className="p-8 flex-1 overflow-y-auto max-w-7xl mx-auto w-full flex flex-col gap-8 animate-in fade-in duration-350">
-        
+
         {/* Score Summary Banner */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Security Score */}
@@ -224,12 +234,12 @@ function SecurityPageContent() {
               <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">Security Health</span>
               <h3 className="text-xl font-extrabold text-zinc-900">Vulnerability Guard</h3>
               <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-                Aggregated code safety metrics scanning for hardcoded secrets, database injection risks, and auth guards.
+                Limited source checks for credential signatures and Python AST rules. Dependencies and other languages are not audited.
               </p>
             </div>
             <div className="flex flex-col items-center justify-center shrink-0">
               <div className="w-20 h-20 rounded-full border-4 border-emerald-100 bg-emerald-50 flex items-center justify-center">
-                <span className="text-2xl font-bold font-mono text-emerald-600">{securityData?.security_score ?? 100}</span>
+                <span className="text-2xl font-bold font-mono text-emerald-600">{securityData?.security_score ?? "Unavailable"}</span>
               </div>
               <span className="text-[10px] text-slate-400 mt-2 font-mono">Score / 100</span>
             </div>
@@ -254,45 +264,54 @@ function SecurityPageContent() {
             </div>
             <div className="flex flex-col items-center justify-center shrink-0">
               <div className="w-20 h-20 rounded-full border-4 border-indigo-100 bg-indigo-50 flex items-center justify-center">
-                <span className="text-2xl font-bold font-mono text-primary">{debtData?.debt_score ?? 100}</span>
+                <span className="text-2xl font-bold font-mono text-primary">{debtData?.debt_score ?? "Unavailable"}</span>
               </div>
               <span className="text-[10px] text-slate-400 mt-2 font-mono">Score / 100</span>
             </div>
           </Card>
         </div>
 
+        <section aria-label="Severity filters" className="flex flex-wrap gap-3">
+          {["All", "Critical", "High", "Medium", "Low"].map(severity => <button key={severity} type="button" aria-pressed={severityFilter === severity} onClick={() => setSeverityFilter(severity)} className="rounded border px-3 py-2 text-xs focus-visible:ring-2 focus-visible:ring-primary">
+            {severity} {severity === "All" ? (securityData?.vulnerabilities?.length ?? 0) : (securityData?.vulnerabilities?.filter((v: {severity: string}) => v.severity === severity).length ?? 0)}
+          </button>)}
+        </section>
+        {sourceError && <p role="alert" className="text-sm text-amber-700">{sourceError}</p>}
         {/* Detailed Logs */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
-          
+
           {/* Security Log */}
           <div className="flex flex-col gap-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <Bug className="w-4 h-4 text-rose-500" /> Security Vulnerabilities
             </h3>
-            
+
             {!hasSecurityIssues ? (
               <div className="p-8 border border-dashed border-[#E5E7EB] bg-white rounded-xl text-center flex flex-col items-center gap-2 shadow-sm">
                 <ShieldCheck className="w-8 h-8 text-emerald-500" />
-                <h4 className="text-xs font-bold text-zinc-900">No vulnerabilities found</h4>
+                <h4 className="text-xs font-bold text-zinc-900">No findings from available source rules</h4>
                 <p className="text-[10px] text-[#6B7280] max-w-xs">
-                  We didn't detect any immediate hardcoded tokens, API keys, or unescaped query configurations.
+                  This result is limited to the source rules that ran. It is not a complete security assessment.
                 </p>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {securityData.vulnerabilities.map((vuln: any, idx: number) => (
+                {securityData.vulnerabilities.filter((v: { severity: string }) => severityFilter === "All" || v.severity === severityFilter).sort((a: {severity: string}, b: {severity: string}) => ["Critical", "High", "Medium", "Low"].indexOf(a.severity) - ["Critical", "High", "Medium", "Low"].indexOf(b.severity)).map((vuln: any, idx: number) => (
                   <div key={idx} className="p-4 bg-white border border-[#E5E7EB] rounded-xl flex flex-col gap-2 shadow-xs">
                     <div className="flex justify-between items-start gap-3">
                       <span className="text-xs font-semibold font-mono text-zinc-900 truncate max-w-[70%]">{vuln.file}</span>
                       <Badge className={`text-[10px] font-semibold border ${
-                        vuln.severity === 'High' 
-                          ? 'bg-rose-55 text-rose-700 border-rose-200' 
+                        vuln.severity === 'High'
+                          ? 'bg-rose-55 text-rose-700 border-rose-200'
                           : 'bg-amber-50 text-amber-700 border-amber-200'
                       }`}>
-                        {vuln.severity} Risk
+                        {vuln.severity}
                       </Badge>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed font-sans">{vuln.description}</p>
+                    <p className="text-xs text-zinc-600">{vuln.cwe} · {vuln.evidence}</p>
+                    <details className="text-xs"><summary className="cursor-pointer">Remediation</summary><p className="mt-2">{vuln.remediation}</p></details>
+                    <button type="button" className="text-xs text-primary text-left underline" onClick={() => activeRepoId && openRepositorySource(activeRepoId, vuln.file, vuln.line).catch(() => setSourceError("Source unavailable. Rescan the repository."))}>Open source</button>
                     {vuln.line && (
                       <span className="text-[10px] text-slate-400 font-mono">Line Number: L{vuln.line}</span>
                     )}
@@ -307,11 +326,11 @@ function SecurityPageContent() {
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-primary" /> Refactoring & Code Debt
             </h3>
-            
+
             {!hasDebtIssues ? (
               <div className="p-8 border border-dashed border-[#E5E7EB] bg-white rounded-xl text-center flex flex-col items-center gap-2 shadow-sm">
                 <ShieldCheck className="w-8 h-8 text-emerald-500" />
-                <h4 className="text-xs font-bold text-zinc-900">Codebase is highly maintainable</h4>
+                <h4 className="text-xs font-bold text-zinc-900">No file-size or import-cycle debt found</h4>
                 <p className="text-[10px] text-[#6B7280] max-w-xs">
                   Files sizes are within standard parameters and import layouts are clean.
                 </p>
@@ -326,7 +345,7 @@ function SecurityPageContent() {
                         {issue.type}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-650 leading-relaxed font-sans">{issue.description}</p>
+                    <p className="text-xs text-slate-650 leading-relaxed font-sans">{issue.description}</p><p className="text-xs text-zinc-600">{issue.impact}</p><p className="text-xs">{issue.recommendation}</p>
                     <div className="flex justify-between items-center mt-1.5 border-t border-slate-50 pt-1.5">
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Severity</span>
                       <span className={`text-[10px] font-extrabold uppercase ${

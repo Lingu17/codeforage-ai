@@ -1,455 +1,90 @@
-<img width="1919" height="972" alt="image" src="https://github.com/user-attachments/assets/6c806663-14f3-4cd3-ac20-a0e991236dc8" /># 🚀 CodeForge AI
+# CodeForge AI
 
+Repository analysis with Next.js 16, FastAPI, Supabase Auth/Postgres/pgvector, Gemini embeddings and PR review, and Groq repository chat. The canonical application is `frontend/` and `backend/`. The obsolete nested checkout and broken tracked Python environment were archived outside this checkout. Local environment files were preserved; never commit them.
 
+## Local setup
 
-<p align="center">
-  <strong>AI-Powered Software Engineering Copilot for Repository Analysis, Architecture Visualization, Security Audits, and Intelligent Codebase Chat.</strong>
-</p>
+Use Python 3.14 and Node.js 24. From the root in PowerShell:
 
-<p align="center">
-  <a href="https://codeforage-ai.vercel.app/">🌐 Live Demo</a> •
-  <a href="https://github.com/Lingu17">GitHub</a> •
-  <a href="https://linkedin.com/in/lingraj-malipatil">LinkedIn</a>
-</p>
-
-<p align="center">
-
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
-![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
-![OpenAI](https://img.shields.io/badge/OpenAI-GPT--5-purple)
-![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)
-![License](https://img.shields.io/badge/License-MIT-blue)
-
-</p>
-
----
-
-# ✨ Overview
-
-CodeForge AI is an intelligent software engineering platform that helps developers understand, analyze, secure, and improve repositories using AI.
-
-Simply connect a GitHub repository and CodeForge AI automatically:
-
-✅ Analyzes repository structure
-
-✅ Generates architecture maps
-
-✅ Creates semantic code embeddings
-
-✅ Enables AI-powered repository chat
-
-✅ Detects vulnerabilities
-
-✅ Scores project health
-
-✅ Reviews pull requests
-
-✅ Surfaces technical debt and risks
-
-Built for:
-
-* Developers
-* Engineering Teams
-* CTOs
-* Startups
-* Open Source Maintainers
-
----
-
-# 📸 Product Preview
-
-## Landing Page
-
-<img width="1918" height="971" alt="image" src="https://github.com/user-attachments/assets/51262b2a-81b2-4aa2-b874-f87dd5effb1a" />
-
-
----
-
-## Dashboard
-
-<img width="1918" height="969" alt="image" src="https://github.com/user-attachments/assets/cc9b6b6d-bd26-4f11-aef0-65d04536963d" />
-
-
----
-
-## Repository Analysis
-
-<img width="1912" height="962" alt="image" src="https://github.com/user-attachments/assets/919191f9-9fc7-4b72-b3c9-779d89e47e32" />
-
-
----
-
-## Architecture Visualization
-
-<img width="1919" height="976" alt="image" src="https://github.com/user-attachments/assets/3847f12e-5d8f-4d89-a93e-b245e467ff41" />
-
-
----
-
-## Security Audit
-
-<img width="1919" height="977" alt="image" src="https://github.com/user-attachments/assets/26bf8288-2625-40c8-98ad-1b12c8beb8e1" />
-
-
----
-
-## AI Codebase Chat
-
-<img width="1913" height="971" alt="image" src="https://github.com/user-attachments/assets/dc3e4b78-28f5-440a-857a-c0a7ffc88d1b" />
-
-
-
-
-
-
----
-
-# 🏗 System Architecture
-
-```text
-GitHub Repository
-        │
-        ▼
- Repository Ingestion
-        │
-        ▼
- Code Parsing & Chunking
-        │
-        ▼
- Embedding Generation
-        │
-        ▼
- Vector Database
-        │
-        ▼
- AI Analysis Engine
- ┌──────┼────────────┬─────────────┐
- ▼      ▼            ▼             ▼
-Chat Security Health Architecture
-Engine Audit Score Visualization
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env.local
 ```
 
----
+Copy examples only when no local configuration exists. Populate placeholders with your project configuration. Provider keys and the optional contact service-role key stay server-side. Browser configuration contains only the public Supabase URL/anon key and backend URL. Production validation rejects missing configuration. Set `ALLOWED_ORIGINS` to actual frontend origins.
 
-# 🔥 Features
+Configure GitHub OAuth in Supabase with callback `/auth/callback` and private-repository scope when needed. Start from `backend/`:
 
-## Repository Analysis
-
-* GitHub OAuth Integration
-* Public Repository Scanning
-* Private Repository Scanning
-* Repository Cloning
-* Dependency Detection
-* Source Code Indexing
-
----
-
-## Architecture Visualization
-
-* Interactive Graphs
-* Dependency Mapping
-* Service Relationships
-* Module Connections
-* Architecture Risk Detection
-
----
-
-## AI Codebase Chat
-
-Ask:
-
-* How does authentication work?
-* Explain application architecture.
-* Where is payment processing implemented?
-* Find security issues.
-* Explain API flow.
-
----
-
-## Security Audits
-
-* Vulnerability Detection
-* Secret Scanning
-* Dependency Risks
-* Security Recommendations
-* OWASP Checks
-
----
-
-## Repository Health Score
-
-Calculated using:
-
-* Documentation Quality
-* Security Posture
-* Dependency Health
-* Maintainability
-* Architecture Quality
-
----
-
-## AI Pull Request Reviews
-
-* Code Quality Suggestions
-* Refactoring Advice
-* Security Warnings
-* Best Practice Recommendations
-
----
-
-# 🛠 Tech Stack
-
-## Frontend
-
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* Framer Motion
-* ShadCN UI
-
-## Backend
-
-* FastAPI
-* Python
-* AsyncIO
-* GitPython
-
-## AI Layer
-
-* OpenAI GPT Models
-* OpenAI Embeddings
-
-## Database
-
-* Supabase
-* PostgreSQL
-* pgvector
-
-## Infrastructure
-
-* Vercel
-* Render
-* GitHub OAuth
-
----
-
-# 📂 Project Structure
-
-```text
-codeforge-ai/
-
-frontend/
-├── app/
-├── components/
-├── hooks/
-├── lib/
-└── types/
-
-backend/
-├── api/
-├── services/
-├── embeddings/
-├── repositories/
-├── scanners/
-├── security/
-└── workers/
-
-database/
-├── migrations/
-└── schema.sql
-
-docs/
-assets/
+```powershell
+..\.venv\Scripts\python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
----
+In another terminal, from `frontend/`:
 
-# ⚙ Environment Variables
-
-## Frontend
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_API_URL=
-NEXT_PUBLIC_GITHUB_CLIENT_ID=
-NEXT_PUBLIC_WEB3FORMS_KEY=
-```
-
-## Backend
-
-```env
-OPENAI_API_KEY=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-FRONTEND_URL=
-```
-
----
-
-# 🚀 Quick Start
-
-## Clone
-
-```bash
-git clone https://github.com/Lingu17/codeforge-ai.git
-
-cd codeforge-ai
-```
-
-## Frontend
-
-```bash
-cd frontend
-
-npm install
-
+```powershell
+npm ci
 npm run dev
 ```
 
-Runs on:
+Frontend: http://localhost:3000. Backend: http://127.0.0.1:8000. API docs: `/docs`. `/health` and `/api/health` check process liveness. `/ready` probes database access and returns 503 when unavailable.
 
-```text
-http://localhost:3000
+## Database setup
+
+Back up existing databases and test migrations on staging. Fresh Supabase projects: run `backend/supabase_schema.sql`, then migrations V3, V4, V5, V6, V7 in order. V2 is only for legacy deployments with earlier table names. Existing deployments must apply outstanding migrations through V7. The base schema is initialization, not an arbitrary repeatable migration.
+
+V6 replaces permissive policies with owner-only policies, scopes retrieval RPCs, adds line/model provenance and job metadata, and disables redundant embedding replication. Legacy NULL-owned repositories remain inaccessible: assign ownership only after independent verification. V6 refuses duplicate active jobs or chunk indexes and validates repository/file references; it does not rewrite job history. Review conflicts during maintenance before applying it. V7 adds transactional chat request claims and assistant persistence. Reload PostgREST schema cache after migration. Do not run this version against an unmigrated database.
+
+`backend/tests/rls_isolation.sql` is a rollback-only staging smoke test requiring two existing test users, run by a database administrator. It checks owner visibility, cross-user reads/writes/deletes and vector retrieval. Live migrations and RLS isolation are **NOT VERIFIED** here.
+
+## Implemented behavior and limits
+
+- GitHub identities are verified before cloning. Only canonical HTTPS GitHub URLs are accepted. Tokens are excluded from clone URLs and command arguments. Repository code is parsed, not executed.
+- Jobs persist stages, coverage, heartbeats, cancellation and failures. Failed embedding batches produce partial/failed results. Retry reuses valid unchanged files. In-process work is lost on restart; stale jobs become recoverable failures on status/retry requests, with conditional updates that cannot override fresh heartbeats. Automatic distributed queue replay is not implemented.
+- Gemini embeddings are batched, bounded, validated at 768 dimensions, rate limited and retried for transient failures. Query/document formatting follows the configured model. Invalid embeddings fail explicitly.
+- Chat combines repository-scoped vector and lexical retrieval with bounded context. Source chunks are untrusted data. Citations use actual line metadata and recorded scan commits. Streamed requests use durable idempotency claims; truncated/error streams never report success.
+- Security uses selected secret patterns and Python AST rules with redacted evidence, severity, CWE and remediation. This is not comprehensive security/dependency auditing or equal coverage across languages.
+- Health uses deterministic cycles, large files and detected source issues. Testing and performance are unmeasured (`null`). Source scores do not certify production quality. Debt points to large files and cycles without invented effort estimates.
+- Import graphs expose local edges, cycles and available metadata. Resolution is heuristic for unsupported language constructs. Observed external imports are shown separately, with Internal/External/Both filtering; installation and service relationships are not inferred.
+- PR review accepts bounded diffs and validates generated categories and locations against added lines before saving. Suggestions require human review.
+
+Source chunks, embeddings, reports, PR diffs and chat messages are retained in Supabase. Relevant code is sent to Gemini/Groq. Configure retention, consent, isolated workers and deployment controls before sensitive code use. Contact submission requires a backend-only service-role key; its process-local rate limiter is not distributed protection. Paid plans, SSO and billing are not implemented.
+
+## Verification commands
+
+From `backend/`:
+
+```powershell
+python -m pytest -q
+python -m compileall -q . -x "venv|__pycache__"
+python -m bandit -r . -x tests,venv -ll
+python -m pip_audit -r requirements.txt
 ```
 
-## Backend
+From `frontend/`:
 
-```bash
-cd backend
-
-pip install -r requirements.txt
-
-uvicorn app.main:app --reload
+```powershell
+npm run test
+npm run typecheck
+npm run lint
+npm run build
+npm audit --omit=dev
+npm audit
 ```
 
-Runs on:
+CI runs relevant checks. TypeScript/build errors must not be bypassed. The inherited ESLint configuration reports several React/typing rules as warnings; a passing exit is not warning-free code. Docker runs one non-root backend worker; Docker execution is **NOT VERIFIED**.
 
-```text
-http://localhost:8000
-```
+Local liveness/docs and mocked authorization/provider failures were tested. Public landing widths 390/768/1024/1280 had no horizontal overflow. Forms have accessible names, and the planned-feature dialog was checked for keyboard focus wrapping, Escape and focus restoration. Database readiness remains 503 because V6/V7 schema changes are missing; the SDK constructor mismatch was corrected. Public GitHub metadata/clone/parsing and live Gemini embedding/generation and Groq completion/streaming passed. Authenticated import/private cloning, deployed RLS, end-to-end scan/chat, complete accessibility and production load remain **NOT VERIFIED**. Five high-severity development advisories remain in the Next ESLint toolchain. Runtime npm and pinned backend audits had no known advisories at verification time.
 
----
+See `AUDIT.md` for final evidence. Production readiness: **NOT READY** pending external verification and operational limitations.
 
-# 🔐 GitHub OAuth Setup
+## Release and deployment gates
 
-Homepage URL
+Read `DATABASE_RELEASE_PLAN.md` before applying migrations. Run `python backend/schema_check.py` for read-only schema diagnostics. Disposable PostgreSQL/pgvector verification is defined in `compose.db-test.yml`; see the release plan for exact commands. Docker is unavailable here, so that workflow and container execution remain unverified.
 
-```text
-https://yourdomain.com
-```
+For a configured staging API and existing scanned test repository, set `CODEFORGE_SMOKE_URL`, `CODEFORGE_SMOKE_TOKEN`, and `CODEFORGE_SMOKE_REPO_ID`, then run `python tools/e2e_smoke.py`. The default smoke reads authenticated reports only. `--chat` explicitly writes three cited test chats; use it only on authorized staging data. It does not replace browser OAuth/private import testing.
 
-Callback URL
+Build a backend image with `docker build -t codeforge-backend backend`. Provide server environment values through your deployment's secret store, set `APP_ENV=production`, configure the tested generation model explicitly, and allow only the actual HTTPS frontend origin. The current local environment lacks production `GEMINI_AI_MODEL` and `ALLOWED_ORIGINS`; do not deploy it as-is. The frontend uses `npm run build` and `npm run start` with public configuration. Backend `/ready` must pass before routing production traffic. Deploy a single backend worker; this version has persisted state and stale recovery, not a distributed worker queue.
 
-```text
-https://yourdomain.com/auth/github/callback
-```
-
-Add:
-
-```env
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-```
-
----
-
-# 📧 Contact Form Setup (Web3Forms)
-
-Create an account at Web3Forms.
-
-Add:
-
-```env
-NEXT_PUBLIC_WEB3FORMS_KEY=
-```
-
-Submit requests to:
-
-```text
-https://api.web3forms.com/submit
-```
-
----
-
-# 🗺 Roadmap
-
-## Current
-
-* Repository Analysis
-* Architecture Maps
-* AI Chat
-* Security Audits
-* Health Scores
-* PR Reviews
-
-## Upcoming
-
-* Team Workspaces
-* Slack Integration
-* Jira Integration
-* AI Refactoring Assistant
-* Multi-Repository Search
-* Enterprise SSO
-* CI/CD Insights
-* Continuous Monitoring
-
----
-
-# 🤝 Contributing
-
-1. Fork Repository
-2. Create Feature Branch
-
-```bash
-git checkout -b feature/new-feature
-```
-
-3. Commit Changes
-
-```bash
-git commit -m "Add new feature"
-```
-
-4. Push Branch
-
-```bash
-git push origin feature/new-feature
-```
-
-5. Open Pull Request
-
----
-
-# 👨‍💻 Author
-
-## Lingraj Malipatil
-
-GitHub:
-https://github.com/Lingu17
-
-LinkedIn:
-https://linkedin.com/in/lingraj-malipatil
-
----
-
-# ⭐ Support
-
-If CodeForge AI helps you:
-
-⭐ Star the Repository
-
-🐛 Report Issues
-
-🚀 Share with Developers
-
-💡 Contribute New Features
-
----
-
-<p align="center">
-Built with ❤️ by Lingraj Malipatil
-</p>
+Run `python tools/check_release.py` before staging and `python tools/check_release.py --staged` before committing. These scans inspect candidate/indexed Git content without reading ignored local env files or printing credential values. They are signature checks, not a guarantee of secret absence.

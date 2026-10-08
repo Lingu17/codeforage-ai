@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useCallback, useState, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState, Position, Handle, Node, Edge, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Loader2, ArrowLeft, Layers, RefreshCw, FileText, Search, X, Copy, Check, 
+import {
+  Loader2, ArrowLeft, Layers, RefreshCw, FileText, Search, X, Copy, Check,
   MessageSquare, AlertTriangle, Code2, ShieldAlert, Menu
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
@@ -21,8 +21,8 @@ function CodeNode({ data, selected }: any) {
   const filePath = data.filePath || "";
   const basename = filePath.split("/").pop() || filePath;
   const ext = basename.split(".").pop()?.toLowerCase();
-  
-  let Icon = FileText;
+
+  const Icon = FileText;
   let iconColor = "text-slate-400";
   let borderColor = "border-slate-200";
 
@@ -48,8 +48,8 @@ function CodeNode({ data, selected }: any) {
 
   return (
     <div className={`px-3 py-2 bg-white border rounded-xl shadow-xs flex items-center gap-2.5 text-left transition-all ${
-      selected 
-        ? "ring-2 ring-primary border-primary shadow-sm scale-[1.02]" 
+      selected
+        ? "ring-2 ring-primary border-primary shadow-sm scale-[1.02]"
         : "hover:shadow-xs hover:border-slate-350"
     } ${borderColor}`} style={{ minWidth: "160px" }}>
       <Handle type="target" position={Position.Top} className="opacity-0 w-1 h-1" />
@@ -74,14 +74,14 @@ function ArchitecturePageContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
-  
+
   const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [isScanCompleted, setIsScanCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [summary, setSummary] = useState("");
-  
+
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -89,6 +89,8 @@ function ArchitecturePageContent() {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [groupByFolder, setGroupByFolder] = useState(false);
+  const [languageFilter, setLanguageFilter] = useState("All");
+  const [dependencyFilter, setDependencyFilter] = useState("Both");
 
   // Slide-over drawer details
   const [selectedFileDetails, setSelectedFileDetails] = useState<any>(null);
@@ -96,64 +98,14 @@ function ArchitecturePageContent() {
   const [loadingFileDetails, setLoadingFileDetails] = useState(false);
   const [copiedPath, setCopiedPath] = useState(false);
   const [showOverviewDrawer, setShowOverviewDrawer] = useState(false);
- 
-  useEffect(() => {
-    const queryId = searchParams.get("repo_id");
-    const localId = localStorage.getItem("selected_repo_id");
-    
-    if (!queryId && localId) {
-      router.replace(`${pathname}?repo_id=${localId}`);
-      return;
-    }
-    
-    const id = queryId || localId;
-    if (!id) {
-      setActiveRepoId(null);
-      setLoading(false);
-      setCheckingStatus(false);
-      return;
-    }
-    setActiveRepoId(id);
-  }, [searchParams, pathname, router]);
 
-  useEffect(() => {
-    if (activeRepoId) {
-      checkRepoStatus();
-    }
-  }, [activeRepoId]);
 
-  const checkRepoStatus = async () => {
-    if (!activeRepoId) return;
-    setCheckingStatus(true);
-    try {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      const headers: any = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/status`), { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === "completed") {
-          setIsScanCompleted(true);
-          fetchArchitecture();
-        } else {
-          setIsScanCompleted(false);
-        }
-      } else {
-        setIsScanCompleted(false);
-      }
-    } catch (e) {
-      console.error("Error fetching status:", e);
-      setIsScanCompleted(false);
-    } finally {
-      setCheckingStatus(false);
-    }
-  };
 
-  const fetchArchitecture = async () => {
+
+
+
+
+  const fetchArchitecture = useCallback(async () => {
     if (!activeRepoId) return;
     setLoading(true);
     setError(false);
@@ -174,7 +126,7 @@ function ArchitecturePageContent() {
       const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/architecture`), { headers });
       if (res.ok) {
         const data = await res.json();
-        
+
         // Map raw nodes to custom codeNode component
         const mappedNodes = (data.nodes || []).map((n: any) => ({
           ...n,
@@ -182,13 +134,18 @@ function ArchitecturePageContent() {
           data: {
             ...n.data,
             filePath: n.id,
-            language: n.id.split(".").pop() === "py" ? "python" : "typescript"
+            language: n.data?.language || "unknown"
           }
         }));
 
         setNodes(mappedNodes);
         setEdges(data.edges || []);
         setSummary(data.summary || "Visual dependency layout of the codebase.");
+
+        // Ensure graph layout fits into view after data is set
+        setTimeout(() => {
+          fitView({ padding: 0.2, duration: 600 });
+        }, 150);
       } else {
         setError(true);
       }
@@ -198,23 +155,62 @@ function ArchitecturePageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeRepoId, fitView, setNodes, setEdges]);
+
+const checkRepoStatus = useCallback(async () => {
+    if (!activeRepoId) return;
+    setCheckingStatus(true);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const headers: any = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch(getApiUrl(`/api/repos/${activeRepoId}/status`), { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (["completed", "partial"].includes(data.status)) {
+          setIsScanCompleted(true);
+          fetchArchitecture();
+        } else {
+          setIsScanCompleted(false);
+        }
+      } else {
+        setIsScanCompleted(false);
+      }
+    } catch (e) {
+      console.error("Error fetching status:", e);
+      setIsScanCompleted(false);
+    } finally {
+      setCheckingStatus(false);
+    }
+  }, [activeRepoId, fetchArchitecture]);
 
   // Click handler to open slide-over drawer
   const onNodeClick = async (_event: any, node: any) => {
     setSelectedFileDetails(null);
     setLoadingFileDetails(true);
     setShowFileDrawer(true);
-    
+
     // Dynamically resolve incoming and outgoing dependencies from React Flow edges
     const incomingDeps = edges
       .filter((edge) => edge.target === node.id)
       .map((edge) => edge.source);
-    
+
     const outgoingDeps = edges
       .filter((edge) => edge.source === node.id)
       .map((edge) => edge.target);
 
+    if (node.data?.kind === "external") {
+      setSelectedFileDetails({ file_path: node.data.package_name, language: node.data.language,
+        classes: [], functions: [], imports: [], exports: [], incomingDependencies: incomingDeps,
+        outgoingDependencies: [], complexity: "Not measured", riskScore: null,
+        ai_summary: "External import observed in source. Installation/version is not verified." });
+      setLoadingFileDetails(false);
+      return;
+    }
     try {
       const supabase = createClient();
       const { data } = await supabase
@@ -224,41 +220,10 @@ function ArchitecturePageContent() {
         .eq("file_path", node.id)
         .maybeSingle();
 
-      const basename = node.id.split("/").pop() || node.id;
-      const ext = basename.split(".").pop() || "";
-      const pathDepth = node.id.split("/").length;
-
-      // Base calculated metrics
-      const complexityVal = pathDepth > 3 ? "Medium (Cyclomatic 14)" : "Low (O(1))";
-      const riskScoreVal = Math.min(100, Math.max(5, pathDepth * 12 + (outgoingDeps.length * 8)));
-      const fileSummaryVal = `Module handles key logic for ${basename}. It defines primary exports and resolves local helper utilities.`;
-
-      if (data) {
-        setSelectedFileDetails({
-          ...data,
-          incomingDependencies: incomingDeps,
-          outgoingDependencies: outgoingDeps,
-          complexity: complexityVal,
-          riskScore: riskScoreVal,
-          ai_summary: data.ai_summary || fileSummaryVal
-        });
-      } else {
-        // Fallback mock info if database scan file row is missing
-        setSelectedFileDetails({
-          file_path: node.id,
-          language: ext === "py" ? "python" : "typescript",
-          size: 4520 + (pathDepth * 1200),
-          classes: ext === "py" ? ["EngineClass", "MetricsCollector"] : ["RepositoryController"],
-          functions: ["initialize", "executeAnalysis", "cleanupResources", "getMetrics"],
-          imports: ["os", "sys", "react", "lucide-react"],
-          exports: ["defaultExport", "helpers"],
-          incomingDependencies: incomingDeps,
-          outgoingDependencies: outgoingDeps,
-          complexity: complexityVal,
-          riskScore: riskScoreVal,
-          ai_summary: fileSummaryVal
-        });
-      }
+      setSelectedFileDetails(data ? {
+        ...data, incomingDependencies: incomingDeps, outgoingDependencies: outgoingDeps,
+        complexity: "Not measured", riskScore: null, ai_summary: "Import graph metadata only."
+      } : null);
     } catch (e) {
       console.error("Error fetching repository file row:", e);
     } finally {
@@ -283,7 +248,7 @@ function ArchitecturePageContent() {
   // Filter nodes & edges dynamically based on search & hover states
   const processedNodes = (() => {
     const query = searchQuery.trim().toLowerCase();
-    
+
     const connectedNodeIds = new Set<string>();
     if (hoveredNodeId) {
       connectedNodeIds.add(hoveredNodeId);
@@ -297,7 +262,7 @@ function ArchitecturePageContent() {
       const label = (node.data?.label || "").toString().toLowerCase();
       const filePath = node.id.toLowerCase();
       const isSearchMatch = query ? (filePath.includes(query) || label.includes(query)) : false;
-      
+
       let opacity = 1;
       let isHighlighted = false;
 
@@ -312,6 +277,7 @@ function ArchitecturePageContent() {
       return {
         ...node,
         selected: isHighlighted,
+        hidden: (languageFilter !== "All" && node.data?.language !== languageFilter) || (dependencyFilter === "Internal" && node.data?.kind === "external") || (dependencyFilter === "External" && node.data?.kind !== "external"),
         style: {
           ...node.style,
           opacity,
@@ -336,7 +302,7 @@ function ArchitecturePageContent() {
         const targetNode = nodes.find(n => n.id === edge.target);
         const sourceMatch = sourceNode ? (sourceNode.id.toLowerCase().includes(query) || (sourceNode.data?.label || "").toString().toLowerCase().includes(query)) : false;
         const targetMatch = targetNode ? (targetNode.id.toLowerCase().includes(query) || (targetNode.data?.label || "").toString().toLowerCase().includes(query)) : false;
-        
+
         isRelated = sourceMatch && targetMatch;
         opacity = isRelated ? 1 : 0.25;
       }
@@ -346,7 +312,7 @@ function ArchitecturePageContent() {
         animated: isRelated || edge.animated,
         style: {
           ...edge.style,
-          stroke: isRelated ? "#4F46E5" : "#E5E7EB",
+          stroke: edge.data?.circular ? "#dc2626" : isRelated ? "#4F46E5" : "#E5E7EB",
           strokeWidth: isRelated ? 2.5 : 1,
           opacity,
           transition: "opacity 0.2s, stroke 0.2s, stroke-width 0.2s",
@@ -431,7 +397,32 @@ function ArchitecturePageContent() {
 
   const { nodes: flowNodes, edges: flowEdges } = getProcessedFlowData();
 
-  if (checkingStatus) {
+  useEffect(() => {
+    const queryId = searchParams.get("repo_id");
+    const localId = localStorage.getItem("selected_repo_id");
+
+    if (!queryId && localId) {
+      router.replace(`${pathname}?repo_id=${localId}`);
+      return;
+    }
+
+    const id = queryId || localId;
+    if (!id) {
+      setActiveRepoId(null);
+      setLoading(false);
+      setCheckingStatus(false);
+      return;
+    }
+    setActiveRepoId(id);
+  }, [searchParams, pathname, router]);
+
+useEffect(() => {
+    if (activeRepoId) {
+      checkRepoStatus();
+    }
+  }, [activeRepoId, checkRepoStatus]);
+
+if (checkingStatus) {
     return (
       <div className="flex-1 flex items-center justify-center p-8 bg-[#F8FAFC] min-h-screen">
         <div className="flex flex-col items-center gap-2">
@@ -447,9 +438,9 @@ function ArchitecturePageContent() {
       <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen">
         <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white shrink-0">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => router.push("/dashboard")}
               className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
             >
@@ -457,7 +448,7 @@ function ArchitecturePageContent() {
             </Button>
             <div className="flex items-center gap-2 font-semibold text-lg">
               <Layers className="w-5 h-5 text-primary" />
-              <span>Architecture Intelligence</span>
+              <span>Import Dependency Graph</span>
             </div>
           </div>
         </header>
@@ -471,9 +462,9 @@ function ArchitecturePageContent() {
       <div className="flex flex-col h-full bg-[#F8FAFC] text-[#111827] min-h-screen">
         <header className="h-16 flex items-center justify-between px-8 border-b border-[#E5E7EB] bg-white">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => router.push("/dashboard")}
               className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
             >
@@ -481,14 +472,14 @@ function ArchitecturePageContent() {
             </Button>
             <div className="flex items-center gap-2 font-semibold text-lg">
               <Layers className="w-5 h-5 text-primary" />
-              <span>Architecture Intelligence</span>
+              <span>Import Dependency Graph</span>
             </div>
           </div>
         </header>
-        <EmptyState 
-          title="No Repository Connected" 
-          description="Import a repository to start analyzing your codebase and map dependencies." 
-          action="Import Repository" 
+        <EmptyState
+          title="No Repository Connected"
+          description="Import a repository to start analyzing your codebase and map dependencies."
+          action="Import Repository"
         />
       </div>
     );
@@ -499,9 +490,9 @@ function ArchitecturePageContent() {
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-4 sm:px-8 border-b border-[#E5E7EB] bg-white z-10 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.push("/dashboard")}
             className="text-[#6B7280] hover:text-[#111827] cursor-pointer"
           >
@@ -520,12 +511,12 @@ function ArchitecturePageContent() {
 
           <div className="flex items-center gap-2 font-semibold text-sm sm:text-lg">
             <Layers className="w-4.5 h-4.5 text-primary" />
-            <span>Architecture Intelligence</span>
+            <span>Import Dependency Graph</span>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={fetchArchitecture}
           className="border-[#E5E7EB] hover:bg-slate-50 text-xs gap-1.5 cursor-pointer font-semibold h-9 px-3"
         >
@@ -535,16 +526,21 @@ function ArchitecturePageContent() {
 
       {/* Workspace */}
       <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden bg-[#F8FAFC]">
-        
+
         {/* Left Side: Summary, Search, Legend */}
         <div className="w-full md:w-80 bg-white border-b md:border-b-0 md:border-r border-[#E5E7EB] p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0 hidden md:flex">
-          
+
           {/* Search Node filter box */}
           <div className="flex flex-col gap-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-[#6B7280] text-left">Search Nodes</h3>
+            <label className="text-xs">Language <select aria-label="Filter graph by language" value={languageFilter} onChange={e => setLanguageFilter(e.target.value)} className="border rounded p-2 ml-2">
+              {["All", ...new Set(nodes.map(n => String(n.data?.language ?? "unknown")))].map(language => <option key={language}>{language}</option>)}
+            </select></label>
+            <label className="text-xs">Dependencies <select aria-label="Filter internal or external dependencies" value={dependencyFilter} onChange={e => setDependencyFilter(e.target.value)} className="border rounded p-2 ml-2">{["Both", "Internal", "External"].map(mode => <option key={mode}>{mode}</option>)}</select></label>
+            <p className="text-xs text-red-700">Red edges indicate cycles. Dashed edges show imports observed in source; package installation is not verified.</p>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
-              <input 
+              <input
                 type="text"
                 placeholder="Filter files (e.g. index.ts)..."
                 value={searchQuery}
@@ -552,7 +548,7 @@ function ArchitecturePageContent() {
                 className="w-full bg-slate-55 border border-[#E5E7EB] rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white text-zinc-900"
               />
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111827]"
                 >
@@ -598,7 +594,7 @@ function ArchitecturePageContent() {
               </div>
               <div className="h-px bg-[#E5E7EB] my-1" />
               <div className="text-[10px] text-[#6B7280] leading-relaxed text-left">
-                Hover over any node to highlight its imports and direct dependency connections. Click a file to inspect exports, functions, risk scores, and ask AI queries.
+                Hover over any node to highlight its imports and direct dependency connections. Click a file to inspect extracted metadata and direct dependencies.
               </div>
             </div>
           </div>
@@ -639,7 +635,7 @@ function ArchitecturePageContent() {
               <Layers className="w-12 h-12 text-[#6B7280] mb-3 opacity-30" />
               <h4 className="text-sm font-semibold text-[#111827]">No architecture nodes found</h4>
               <p className="text-xs text-[#6B7280] max-w-xs mt-1">
-                We couldn't resolve any local file dependencies or imports. Make sure the files are in supported languages and import local path structures.
+                We couldn&apos;t resolve any local file dependencies or imports. Make sure the files are in supported languages and import local path structures.
               </p>
             </div>
           ) : (
@@ -669,10 +665,10 @@ function ArchitecturePageContent() {
                 <Button variant="outline" size="sm" onClick={() => zoomTo(0.5)} className="h-8 px-2.5 cursor-pointer text-xs font-semibold text-zinc-700">50%</Button>
                 <Button variant="outline" size="sm" onClick={() => fitView({ duration: 400 })} className="h-8 px-2.5 cursor-pointer text-xs font-semibold text-zinc-700">Fit View</Button>
                 <div className="w-px bg-[#E5E7EB] my-1" />
-                <Button 
-                  variant={groupByFolder ? "default" : "outline"} 
-                  size="sm" 
-                  onClick={() => setGroupByFolder(p => !p)} 
+                <Button
+                  variant={groupByFolder ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGroupByFolder(p => !p)}
                   className={`h-8 px-3 cursor-pointer text-xs font-bold transition-all ${
                     groupByFolder ? 'bg-primary text-white hover:bg-primary/95 shadow-xs' : 'text-zinc-700 hover:bg-slate-55'
                   }`}
@@ -689,9 +685,9 @@ function ArchitecturePageContent() {
       {showFileDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end font-sans">
           {/* Overlay click background */}
-          <div 
+          <div
             onClick={() => setShowFileDrawer(false)}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" 
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
           />
           {/* Slide panel */}
           <div className="relative w-full max-w-md bg-white h-full shadow-2xl border-l border-[#E5E7EB] flex flex-col p-6 overflow-y-auto text-left gap-6 animate-in slide-in-from-right duration-250">
@@ -707,7 +703,7 @@ function ArchitecturePageContent() {
                   {selectedFileDetails ? selectedFileDetails.file_path : ""}
                 </span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowFileDrawer(false)}
                 className="p-1 hover:bg-slate-100 rounded-lg text-[#6B7280] hover:text-[#111827] cursor-pointer border border-[#E5E7EB]"
               >
@@ -722,7 +718,7 @@ function ArchitecturePageContent() {
               </div>
             ) : selectedFileDetails ? (
               <div className="flex flex-col gap-5 text-xs text-[#111827]">
-                
+
                 {/* Summary */}
                 <div className="flex flex-col gap-2">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-[#6B7280] text-left">Summary</h4>
@@ -754,12 +750,12 @@ function ArchitecturePageContent() {
                         <span className="font-semibold text-xs text-emerald-900">{selectedFileDetails.complexity}</span>
                       </div>
                     </div>
-                    
+
                     <div className="p-3 bg-amber-50/50 border border-amber-150 rounded-xl flex items-center gap-2.5">
                       <div className="w-2 h-2 rounded-full bg-amber-500" />
                       <div className="flex flex-col text-left">
                         <span className="text-[9px] text-amber-850 font-bold uppercase tracking-wider">Risk Score</span>
-                        <span className="font-semibold text-xs text-amber-900">{selectedFileDetails.riskScore} / 100</span>
+                        <span className="font-semibold text-xs text-amber-900">{selectedFileDetails.riskScore ?? "Not measured"}</span>
                       </div>
                     </div>
                   </div>
@@ -820,7 +816,7 @@ function ArchitecturePageContent() {
                 {/* Quick actions for codebase chat */}
                 <div className="flex flex-col gap-2 border-t border-[#E5E7EB] pt-4">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-[#6B7280] text-left">AI Shortcuts</h4>
-                  <Card 
+                  <Card
                     onClick={() => router.push(`/dashboard/chat?repo_id=${activeRepoId}&query=Explain the code structure and key components of ${selectedFileDetails.file_path}`)}
                     className="border border-[#E5E7EB] hover:border-primary/30 transition-all cursor-pointer p-4 bg-white hover:bg-slate-55 flex gap-3 items-center"
                   >
@@ -868,9 +864,9 @@ function ArchitecturePageContent() {
 
                 {/* Copy path shortcut */}
                 <div className="flex gap-2.5 mt-4 border-t border-[#E5E7EB] pt-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => copyPathText(selectedFileDetails.file_path)}
                     className="flex-1 border-[#E5E7EB] hover:bg-slate-50 text-xs font-semibold cursor-pointer h-9 rounded-xl flex items-center justify-center gap-1.5"
                   >
@@ -906,21 +902,21 @@ function ArchitecturePageContent() {
           <div className="relative w-72 h-full border-r border-[#E5E7EB] bg-white shadow-2xl flex flex-col p-6 overflow-y-auto text-left gap-6 animate-in slide-in-from-left duration-250">
             <div className="flex justify-between items-center border-b border-[#E5E7EB] pb-4 shrink-0">
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">Graph Console</span>
-              <button 
+              <button
                 type="button"
-                onClick={() => setShowOverviewDrawer(false)} 
+                onClick={() => setShowOverviewDrawer(false)}
                 className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors border border-[#E5E7EB] cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
             </div>
-            
+
             {/* Search Node filter box */}
             <div className="flex flex-col gap-2">
               <h3 className="text-xs font-bold uppercase tracking-widest text-[#6B7280]">Search Nodes</h3>
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
-                <input 
+                <input
                   type="text"
                   placeholder="Filter files (e.g. index.ts)..."
                   value={searchQuery}
@@ -928,7 +924,7 @@ function ArchitecturePageContent() {
                   className="w-full bg-slate-55 border border-[#E5E7EB] rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white text-zinc-900"
                 />
                 {searchQuery && (
-                  <button 
+                  <button
                     onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#111827]"
                   >

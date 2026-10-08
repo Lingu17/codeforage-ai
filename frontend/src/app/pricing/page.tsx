@@ -39,7 +39,7 @@ export default function PricingPage() {
           <Badge variant="outline" className="mb-4 border-primary/20 text-primary bg-primary/5">Pricing Plans</Badge>
           <h1 className="text-4xl font-extrabold tracking-tight text-white mb-4">Flexible Plans for Every Developer</h1>
           <p className="text-sm text-zinc-400 leading-relaxed">
-            Select a plan that fits your repository intelligence requirements. Paid plans and team workspace features are currently in beta.
+            Paid plans, billing, and team entitlements are not implemented. The plans below are proposals and cannot be purchased.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export default function PricingPage() {
                 </li>
               </ul>
             </div>
-            <Button 
+            <Button
               onClick={() => setModalOpen(true)}
               className="w-full mt-8 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold text-xs h-9 cursor-pointer"
             >
@@ -122,7 +122,7 @@ export default function PricingPage() {
                 </li>
               </ul>
             </div>
-            <Button 
+            <Button
               onClick={() => setModalOpen(true)}
               className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 cursor-pointer"
             >
@@ -160,7 +160,7 @@ export default function PricingPage() {
                 </li>
               </ul>
             </div>
-            <Button 
+            <Button
               onClick={() => setModalOpen(true)}
               className="w-full mt-8 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold text-xs h-9 cursor-pointer"
             >

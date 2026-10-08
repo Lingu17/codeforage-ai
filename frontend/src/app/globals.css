@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -274,3 +274,4 @@
 .chat-markdown .hljs-link {
   text-decoration: underline;
 }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }

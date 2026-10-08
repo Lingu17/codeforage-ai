@@ -1,14 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowRight, Code2, Network, ShieldAlert, Activity, Layers, Sparkles, 
-  Check, Mail, HelpCircle, 
+import {
+  ArrowRight, Code2, Network, ShieldAlert, Activity, Layers, Sparkles,
+  Check, Mail, HelpCircle,
   Server, Cpu, Database, FileText, MessageSquare, GitPullRequest, Settings,
   Menu, X
 } from "lucide-react";
@@ -59,9 +58,8 @@ function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default function LandingPage() {
-  const router = useRouter();
   const supabase = createClient();
-  
+
   // Contact Form State
   const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
   const [submitStatus, setSubmitStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -77,11 +75,6 @@ export default function LandingPage() {
 
   const triggerLogin = (forceNew: boolean) => {
     window.location.href = "/auth/github";
-  };
-
-  const handleDemoMode = () => {
-    localStorage.setItem("demo_mode", "true");
-    router.push("/dashboard");
   };
 
   const handleContactSubmit = async (e: React.FormEvent) => {
@@ -128,7 +121,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 relative isolate overflow-x-hidden font-sans pb-16">
       <ThreeBackground />
-      
+
       {/* Background soft blurs */}
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-[128px] pointer-events-none -z-10" />
       <div className="absolute top-40 -left-40 w-96 h-96 bg-indigo-500/5 rounded-full blur-[128px] pointer-events-none -z-10" />
@@ -140,7 +133,7 @@ export default function LandingPage() {
             <Layers className="w-5 h-5 text-primary" />
             CodeForge<span className="text-zinc-550 font-medium">AI</span>
           </Link>
-          
+
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center gap-6">
             <a href="#about" className="text-xs text-zinc-550 hover:text-zinc-900 transition-colors">About</a>
@@ -148,16 +141,13 @@ export default function LandingPage() {
             <Link href="/pricing" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors">Pricing</Link>
             <a href="#faq" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors font-sans font-semibold">FAQ</a>
             <a href="#contact" className="text-xs text-zinc-555 hover:text-zinc-900 transition-colors">Contact</a>
-            <Button onClick={handleDemoMode} variant="ghost" className="text-zinc-555 hover:text-zinc-900 cursor-pointer text-xs font-sans hover:bg-zinc-100/50">
-              Demo
-            </Button>
             <Button onClick={handleLogin} className="bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans shadow-sm h-11 px-5">
               <GithubIcon className="w-4 h-4" /> Sign In
             </Button>
           </div>
 
           {/* Mobile Menu Button Toggle */}
-          <button 
+          <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             className="md:hidden p-2 rounded-lg hover:bg-zinc-100/80 text-zinc-650 hover:text-zinc-900 transition-colors border border-border cursor-pointer focus:outline-none"
             aria-label="Toggle Mobile Menu"
@@ -169,45 +159,42 @@ export default function LandingPage() {
         {/* Mobile Navigation Dropdown Menu */}
         {showMobileMenu && (
           <div className="md:hidden border-t border-border bg-white p-5 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-4 duration-200 text-left">
-            <a 
-              href="#about" 
+            <a
+              href="#about"
               onClick={() => setShowMobileMenu(false)}
               className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
             >
               About
             </a>
-            <a 
-              href="#features" 
+            <a
+              href="#features"
               onClick={() => setShowMobileMenu(false)}
               className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
             >
               Features
             </a>
-            <Link 
-              href="/pricing" 
+            <Link
+              href="/pricing"
               onClick={() => setShowMobileMenu(false)}
               className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
             >
               Pricing
             </Link>
-            <a 
-              href="#faq" 
+            <a
+              href="#faq"
               onClick={() => setShowMobileMenu(false)}
               className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50 font-sans"
             >
               FAQ
             </a>
-            <a 
-              href="#contact" 
+            <a
+              href="#contact"
               onClick={() => setShowMobileMenu(false)}
               className="text-xs font-semibold text-zinc-650 hover:text-zinc-900 transition-colors py-1.5 border-b border-zinc-50"
             >
               Contact
             </a>
             <div className="flex gap-3 pt-2">
-              <Button onClick={() => { setShowMobileMenu(false); handleDemoMode(); }} variant="outline" className="flex-1 text-zinc-650 hover:text-zinc-900 cursor-pointer text-xs font-sans h-11 rounded-lg">
-                Demo
-              </Button>
               <Button onClick={() => { setShowMobileMenu(false); handleLogin(); }} className="flex-1 bg-primary hover:bg-primary/95 text-white gap-2 cursor-pointer text-xs font-bold font-sans h-11 rounded-lg shadow-sm">
                 <GithubIcon className="w-4 h-4" /> Sign In
               </Button>
@@ -226,7 +213,7 @@ export default function LandingPage() {
         >
           <motion.div variants={itemVariants}>
             <Badge variant="outline" className="mb-6 py-1.5 px-4 border-primary/20 text-primary bg-primary/5 flex items-center gap-1.5 font-sans">
-              <Sparkles className="w-3.5 h-3.5" /> CodeForge SaaS Portal Active
+              <Sparkles className="w-3.5 h-3.5" /> Repository analysis workspace
             </Badge>
           </motion.div>
 
@@ -247,9 +234,6 @@ export default function LandingPage() {
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
             <Button onClick={handleLogin} size="lg" className="h-12 px-8 text-sm bg-primary hover:bg-primary/95 text-white gap-2 font-bold cursor-pointer rounded-xl font-sans shadow-md">
               Analyze Repository <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button onClick={handleDemoMode} size="lg" variant="outline" className="h-12 px-8 text-sm border-border bg-white hover:bg-zinc-50 gap-2 font-medium cursor-pointer rounded-xl text-zinc-700 hover:text-zinc-900 font-sans shadow-sm">
-              View Demo
             </Button>
           </motion.div>
 
@@ -288,7 +272,7 @@ export default function LandingPage() {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col gap-1.5 border-t border-border pt-4">
                   {["Settings", "Billing"].map((item) => (
                     <div key={item} className="h-6 px-2.5 rounded text-zinc-500 text-[10px] font-medium flex items-center gap-2">
@@ -314,7 +298,7 @@ export default function LandingPage() {
                     <span className="text-[9px] font-mono text-zinc-400">github.com/codeforge-ai/production-service</span>
                   </div>
                   <Badge variant="outline" className="border-emerald-200 text-emerald-600 bg-emerald-50 text-[9px] font-mono flex items-center gap-1 font-sans font-semibold">
-                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Fully Synced
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Sample preview
                   </Badge>
                 </div>
 
@@ -324,9 +308,9 @@ export default function LandingPage() {
                   <div className="border border-border rounded-xl p-4 bg-white flex flex-col items-center gap-2 text-center shadow-sm">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Health Index</span>
                     <div className="w-14 h-14 rounded-full border-4 border-primary bg-primary/5 flex items-center justify-center shadow-inner">
-                      <span className="text-base font-bold font-mono text-primary">92</span>
+                      <span className="text-base font-bold font-mono text-primary">--</span>
                     </div>
-                    <span className="text-[8px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">Grade A-</span>
+                    <span className="text-[8px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">Sample</span>
                   </div>
 
                   {/* Repository Insights */}
@@ -450,22 +434,22 @@ export default function LandingPage() {
             <FeatureCard
               icon={<ShieldAlert className="w-6 h-6 text-rose-555" />}
               title="Security Audit"
-              description="Scan files for exposed secrets, unsafe SQL parameters, raw shell calls, and vulnerable access methods."
+              description="Check selected secret signatures and Python rules for unsafe execution, shell calls, deserialization, and disabled TLS verification."
             />
             <FeatureCard
               icon={<Activity className="w-6 h-6 text-purple-555" />}
               title="Technical Debt Tracker"
-              description="Audit complex code modules, duplicate import calls, bloated classes, and trace circular imports."
+              description="Inspect large source files and circular imports with actionable file locations."
             />
             <FeatureCard
               icon={<GitPullRequest className="w-6 h-6 text-amber-555" />}
               title="PR Review Agent"
-              description="Submit git diff strings and receive deep audits, risk levels, and inline optimization feedback using Gemini Pro."
+              description="Submit a Git diff for an AI review using your configured Gemini model. Review suggestions require human verification."
             />
             <FeatureCard
               icon={<Cpu className="w-6 h-6 text-cyan-555" />}
               title="Health Score Engine"
-              description="Compute dynamic overall grade scores (A-F) based on Architecture, Security, Maintainability, Testing, and Performance weights."
+              description="See deterministic source metrics for architecture, security, and maintainability. Testing and performance remain unmeasured."
             />
             <FeatureCard
               icon={<Database className="w-6 h-6 text-indigo-500" />}
@@ -499,7 +483,7 @@ export default function LandingPage() {
         {/* Section: Supported Technologies */}
         <section className="mt-40 text-center">
           <Badge variant="outline" className="mb-4 border-border text-zinc-550">Supported Technologies</Badge>
-          <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-8 font-sans">Parse & Ingest Any Language</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-8 font-sans">Index supported source files</h2>
           <div className="flex flex-wrap gap-2 justify-center max-w-3xl">
             {["TypeScript", "JavaScript", "React / Next.js", "Python", "Java", "Kotlin", "Go", "Rust", "Node.js", "FastAPI", "Express", "Spring Boot"].map((tech) => (
               <span key={tech} className="bg-white border border-border px-4 py-1.5 rounded-full text-xs text-zinc-650 font-medium shadow-sm">
@@ -532,7 +516,7 @@ export default function LandingPage() {
             </div>
             <div className="p-4 bg-white border border-border rounded-xl flex flex-col items-center gap-2 shadow-sm">
               <Layers className="w-6 h-6 text-primary" />
-              <span className="text-xs font-semibold text-zinc-800">Next.js 15</span>
+              <span className="text-xs font-semibold text-zinc-800">Next.js 16</span>
               <span className="text-[9px] text-zinc-400 font-mono">React Framework</span>
             </div>
             <div className="p-4 bg-white border border-border rounded-xl flex flex-col items-center gap-2 shadow-sm">
@@ -546,13 +530,13 @@ export default function LandingPage() {
         {/* Section: Demo Screenshots Visuals */}
         <section className="mt-40 w-full max-w-5xl">
           <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 border-indigo-200 text-indigo-650 bg-indigo-50">Interface Preview</Badge>
+            <Badge variant="outline" className="mb-4 border-indigo-200 text-indigo-650 bg-indigo-50">Illustrative preview — sample data</Badge>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-sans">Explore the Core Console</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <DemoScreenCard 
-              title="Architecture Visualizer" 
+            <DemoScreenCard
+              title="Architecture Visualizer"
               desc="View local imports mapped to a React Flow canvas with animated connection lines."
               preview={
                 <div className="w-full h-40 bg-zinc-50 rounded-lg relative overflow-hidden flex items-center justify-center border border-border">
@@ -565,21 +549,21 @@ export default function LandingPage() {
                 </div>
               }
             />
-            <DemoScreenCard 
-              title="Codebase Chat (RAG)" 
+            <DemoScreenCard
+              title="Codebase Chat (RAG)"
               desc="Ask detailed logical questions and see responsive answers with file citation tokens."
               preview={
                 <div className="w-full h-40 bg-zinc-50 rounded-lg p-3 border border-border flex flex-col justify-between text-left font-mono shadow-sm">
                   <div className="text-[10px] text-zinc-500 font-sans">&gt; How are scan statuses updated?</div>
                   <div className="text-[10px] text-zinc-700 leading-relaxed bg-white p-2.5 rounded border border-border shadow-sm">
-                    "Scan status updates are managed by the update_job_status function in scanner.py."
+                    &quot;Scan status updates are managed by the update_job_status function in scanner.py.&quot;
                   </div>
                   <div className="flex gap-1.5"><Badge className="bg-primary/10 text-primary border-primary/20 text-[8px]">scanner.py</Badge></div>
                 </div>
               }
             />
-            <DemoScreenCard 
-              title="Security Audits" 
+            <DemoScreenCard
+              title="Security Audits"
               desc="Inspect vulnerability summaries, severity badges, and file locations instantly."
               preview={
                 <div className="w-full h-40 bg-zinc-50 rounded-lg p-3 border border-border flex flex-col gap-2 text-left font-mono text-[9px] shadow-sm">
@@ -598,9 +582,9 @@ export default function LandingPage() {
                 </div>
               }
             />
-            <DemoScreenCard 
-              title="Health Scores & Grades" 
-              desc="Evaluate codebase quality through a weighted index of 5 software engineering disciplines."
+            <DemoScreenCard
+              title="Health Scores & Grades"
+              desc="Inspect measured source metrics, confidence, and explicitly unmeasured dimensions."
               preview={
                 <div className="w-full h-40 bg-zinc-50 rounded-lg border border-border flex items-center justify-center gap-6 shadow-sm">
                   <div className="w-16 h-16 rounded-full border-4 border-emerald-500 flex items-center justify-center text-emerald-600 font-mono font-bold text-lg bg-emerald-50 shadow-inner">
@@ -620,47 +604,47 @@ export default function LandingPage() {
         <section id="pricing" className="mt-40 w-full max-w-5xl">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-indigo-200 text-indigo-650 bg-indigo-50">Pricing</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-sans">Simple, Predictable Pricing</h2>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-sans">Deployment options — paid plans are not available</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <PricingCard 
-              tier="Free" 
-              price="$0" 
+            <PricingCard
+              tier="Free"
+              price="$0"
               desc="Best for open-source analysis & side projects."
               features={[
-                "Analyze up to 5 repositories",
+                "Manual repository analysis",
                 "Basic repository health scan",
-                "Codebase Chat RAG (Gemini Flash)",
-                "Standard RLS policies active"
+                "Codebase Chat (configured Groq model)",
+                "Requires Supabase ownership policies"
               ]}
               cta="Get Started Free"
               action={handleLogin}
             />
-            <PricingCard 
-              tier="Pro" 
-              price="$29" 
-              desc="Optimized for professional developers and startup codebases."
+            <PricingCard
+              tier="Pro (planned)"
+              price="TBD"
+              desc="Proposed plan; billing and entitlements are not implemented."
               features={[
                 "Unlimited repository imports",
-                "Advanced AI scans (Gemini Pro integration)",
-                "Automated PR reviews",
+                "Advanced AI scans (configured Gemini model)",
+                "Manual PR diff reviews",
                 "Interactive dependency graph visualizer",
-                "Prioritized background queuing"
+                "Background queuing (planned)"
               ]}
-              cta="Upgrade to Pro"
+              cta="Pro is planned"
               featured
               action={() => setShowPricingModal(true)}
             />
-            <PricingCard 
-              tier="Enterprise" 
-              price="Custom" 
-              desc="Configured for larger engineering teams & custom setups."
+            <PricingCard
+              tier="Enterprise (planned)"
+              price="Custom"
+              desc="Proposed plan; enterprise integrations are not implemented."
               features={[
                 "Self-hosted deployment options",
-                "Single Sign-On (SSO / SAML)",
-                "Custom integrations & SLA support",
-                "Exclusive dedicated database partition"
+                "SSO / SAML (planned)",
+                "Integrations & SLA support (planned)",
+                "Dedicated database (planned)"
               ]}
               cta="Contact Sales"
               action={() => {
@@ -679,31 +663,31 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <FaqItem 
-              idx={0} 
-              question="Is my code secure and private?" 
-              answer="Absolutely. CodeForge AI clones your repository into a secure, temporary directory that is deleted immediately after the analysis finishes. We do not store your raw source code files in our database; we only persist metadata and anonymized vector embeddings for the semantic chat."
+            <FaqItem
+              idx={0}
+              question="Is my code secure and private?"
+              answer="Repositories are cloned into temporary directories and cleaned up after analysis. Source chunks, embeddings, reports, and chat messages are persisted in Supabase. Retrieved chunks are sent to the configured AI providers. Configure ownership policies and retention before handling private code."
               active={activeFaq === 0}
               onToggle={() => setActiveFaq(activeFaq === 0 ? null : 0)}
             />
-            <FaqItem 
-              idx={1} 
-              question="Which languages are supported?" 
-              answer="We offer fully optimized semantic analysis and symbol parsing for JavaScript, TypeScript, React/Next.js, Python, Java, Kotlin, Go, and Rust. Other file extensions are parsed using standard text chunking fallbacks."
+            <FaqItem
+              idx={1}
+              question="Which languages are supported?"
+              answer="Supported source files are indexed as text for repository chat. Import analysis varies by language. Deterministic security checks currently cover selected secret patterns and Python source rules; other languages do not receive equivalent security coverage."
               active={activeFaq === 1}
               onToggle={() => setActiveFaq(activeFaq === 1 ? null : 1)}
             />
-            <FaqItem 
-              idx={2} 
-              question="Does it support private repositories?" 
-              answer="Yes. When connecting via GitHub OAuth, we request standard scope access to fetch your private repositories. Your private code is treated with the same strict sandbox isolation as public repositories."
+            <FaqItem
+              idx={2}
+              question="Does it support private repositories?"
+              answer="Private repositories require a GitHub OAuth token with access to that repository. Configure GitHub scopes, Supabase ownership policies, and server access controls. Scans do not execute repository code; production deployments still need process isolation."
               active={activeFaq === 2}
               onToggle={() => setActiveFaq(activeFaq === 2 ? null : 2)}
             />
-            <FaqItem 
-              idx={3} 
-              question="Can I self-host CodeForge AI?" 
-              answer="Yes. The Enterprise license supports self-hosted configurations using Docker containers and your own API keys for Supabase and Gemini AI models."
+            <FaqItem
+              idx={3}
+              question="Can I self-host CodeForge AI?"
+              answer="You can run the frontend and backend using the setup instructions in the repository, with your own Supabase, Gemini, and Groq configuration. Review the repository license and deployment limitations before use."
               active={activeFaq === 3}
               onToggle={() => setActiveFaq(activeFaq === 3 ? null : 3)}
             />
@@ -720,33 +704,33 @@ export default function LandingPage() {
 
           <form onSubmit={handleContactSubmit} className="flex flex-col gap-4 text-left">
             <div className="grid grid-cols-2 gap-4">
-              <input 
-                type="text" 
-                placeholder="Name" 
+              <input
+                type="text"
+                aria-label="Name" placeholder="Name"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 className="bg-white border border-border rounded-lg px-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
               />
-              <input 
-                type="email" 
-                placeholder="Email Address" 
+              <input
+                type="email"
+                aria-label="Email address" placeholder="Email Address"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 className="bg-white border border-border rounded-lg px-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
               />
             </div>
-            <input 
-              type="text" 
-              placeholder="Subject" 
+            <input
+              type="text"
+              aria-label="Subject" placeholder="Subject"
               required
               value={formData.subject}
               onChange={(e) => setFormData({...formData, subject: e.target.value})}
               className="bg-white border border-border rounded-lg px-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-zinc-900"
             />
-            <textarea 
-              placeholder="Your Message..." 
+            <textarea
+              aria-label="Message" placeholder="Your Message..."
               rows={4}
               required
               value={formData.message}
@@ -761,8 +745,8 @@ export default function LandingPage() {
               <span className="text-xs text-rose-600 font-mono font-semibold">Failed to submit message. Please try again.</span>
             )}
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={submitStatus === "sending"}
               className="bg-primary hover:bg-primary/90 text-white h-11 text-xs font-semibold cursor-pointer shadow-sm rounded-lg"
             >
@@ -836,10 +820,10 @@ export default function LandingPage() {
               <div className="p-3 bg-zinc-50 border border-border rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {typeof window !== "undefined" && localStorage.getItem("saved_github_avatar") ? (
-                    <img 
-                      src={localStorage.getItem("saved_github_avatar")!} 
-                      alt="Avatar" 
-                      className="w-8 h-8 rounded-full border border-border shrink-0" 
+                    <img
+                      src={localStorage.getItem("saved_github_avatar")!}
+                      alt="Avatar"
+                      className="w-8 h-8 rounded-full border border-border shrink-0"
                     />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center border border-border text-zinc-650 shrink-0 font-mono text-xs font-bold">
@@ -851,7 +835,7 @@ export default function LandingPage() {
                     <span className="text-[10px] text-zinc-450 truncate">{typeof window !== "undefined" ? localStorage.getItem("saved_github_email") : ""}</span>
                   </div>
                 </div>
-                <Button 
+                <Button
                   onClick={() => {
                     setShowAccountChooser(false);
                     triggerLogin(false);
@@ -864,7 +848,7 @@ export default function LandingPage() {
               </div>
 
               {/* Option B: Use different account */}
-              <button 
+              <button
                 onClick={() => {
                   setShowAccountChooser(false);
                   triggerLogin(true);
@@ -876,9 +860,9 @@ export default function LandingPage() {
             </div>
 
             <div className="flex justify-end border-t border-border pt-4">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowAccountChooser(false)}
                 className="text-zinc-500 hover:text-zinc-900 cursor-pointer h-9 px-4 text-xs font-semibold hover:bg-zinc-100"
               >
@@ -919,7 +903,7 @@ function WorkflowStep({ step, title, desc }: { step: string, title: string, desc
       <div className="w-7 h-7 rounded-full bg-primary/5 border border-primary/20 text-primary text-xs flex items-center justify-center font-mono font-bold">
         {step}
       </div>
-      <h4 className="text-sm font-bold text-zinc-900">{title}</h4>
+      <h3 className="text-sm font-bold text-zinc-900">{title}</h3>
       <p className="text-zinc-500 text-xs leading-relaxed">{desc}</p>
     </div>
   );
@@ -929,7 +913,7 @@ function DemoScreenCard({ title, desc, preview }: { title: string, desc: string,
   return (
     <div className="p-6 bg-white border border-border rounded-2xl flex flex-col gap-4 shadow-sm hover:border-primary/20 transition-colors">
       <div className="text-left">
-        <h4 className="font-bold text-zinc-900 text-sm">{title}</h4>
+        <h3 className="font-bold text-zinc-900 text-sm">{title}</h3>
         <p className="text-zinc-500 text-xs mt-1">{desc}</p>
       </div>
       {preview}
@@ -940,8 +924,8 @@ function DemoScreenCard({ title, desc, preview }: { title: string, desc: string,
 function PricingCard({ tier, price, desc, features, cta, featured = false, action }: { tier: string, price: string, desc: string, features: string[], cta: string, featured?: boolean, action?: () => void }) {
   return (
     <Card className={`p-8 flex flex-col justify-between text-left transition-all duration-300 relative overflow-hidden ${
-      featured 
-        ? "bg-white border-2 border-primary shadow-xl scale-105" 
+      featured
+        ? "bg-white border-2 border-primary shadow-xl scale-105"
         : "bg-white border-border shadow-sm hover:border-zinc-350"
     }`}>
       {featured && (
@@ -968,7 +952,7 @@ function PricingCard({ tier, price, desc, features, cta, featured = false, actio
           ))}
         </ul>
       </div>
-      <Button 
+      <Button
         onClick={action}
         className={`w-full mt-8 h-10 text-xs font-semibold cursor-pointer rounded-lg ${
           featured ? "bg-primary hover:bg-primary/90 text-white shadow-sm" : "bg-zinc-900 text-white hover:bg-zinc-800"
@@ -984,7 +968,7 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
   return (
     <Card className="bg-white border-border p-6 flex flex-col justify-between text-left relative shadow-sm">
       <div className="absolute -top-3 left-4 text-3xl font-serif text-zinc-300 pointer-events-none select-none">“</div>
-      <p className="text-zinc-650 text-xs leading-relaxed italic z-10">"{quote}"</p>
+      <p className="text-zinc-650 text-xs leading-relaxed italic z-10">&quot;{quote}&quot;</p>
       <div className="mt-6">
         <span className="block font-semibold text-xs text-zinc-900">{author}</span>
         <span className="text-[10px] text-zinc-450">{role}</span>
@@ -996,7 +980,7 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
 function FaqItem({ idx, question, answer, active, onToggle }: { idx: number, question: string, answer: string, active: boolean, onToggle: () => void }) {
   return (
     <div className="border border-border bg-white rounded-xl overflow-hidden text-left transition-all duration-300 shadow-sm">
-      <button 
+      <button
         onClick={onToggle}
         className="w-full p-5 flex items-center justify-between text-xs font-semibold text-zinc-800 hover:bg-zinc-50 transition-colors cursor-pointer focus:outline-none"
       >

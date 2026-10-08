@@ -69,20 +69,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const fetchSession = async () => {
-      const isDemo = typeof window !== "undefined" && localStorage.getItem("demo_mode") === "true";
       const { data } = await supabase.auth.getSession();
 
-      if (isDemo) {
-        setUser({
-          id: "demo-user-id",
-          email: "guest.developer@codeforge.ai",
-          user_metadata: {
-            user_name: "guest_developer",
-            avatar_url: "https://github.com/github.png",
-            full_name: "Guest Developer",
-          },
-        });
-      } else if (!data.session) {
+      if (!data.session) {
         router.push("/");
       } else {
         setUser(data.session.user);
@@ -104,8 +93,8 @@ export default function SettingsPage() {
 
   const username = user?.user_metadata?.user_name || "developer";
   const displayName = user?.user_metadata?.full_name || "CodeForge User";
-  const avatarUrl = user?.user_metadata?.avatar_url || "https://github.com/Lingu17.png";
-  const email = user?.email || "hello@codeforgeai.dev";
+  const avatarUrl = user?.user_metadata?.avatar_url || "";
+  const email = user?.email || "Email unavailable";
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground min-h-screen font-sans p-4 md:p-8 gap-8">

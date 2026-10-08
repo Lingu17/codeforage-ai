@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
-import { 
+import {
   CreditCard, Check, ArrowLeft,
   Zap, Building2, User
 } from "lucide-react";
@@ -24,28 +24,9 @@ export default function BillingPage() {
 
   useEffect(() => {
     const fetchSession = async () => {
-      const isDemo = typeof window !== "undefined" && localStorage.getItem("demo_mode") === "true";
       const { data } = await supabase.auth.getSession();
-      
-      if (isDemo) {
-        setUser({
-          id: "demo-user-id",
-          email: "guest.developer@codeforge.ai",
-          user_metadata: {
-            user_name: "guest_developer",
-            avatar_url: "https://github.com/github.png"
-          }
-        });
-        try {
-          const res = await fetch(getApiUrl("/api/repos"));
-          if (res.ok) {
-            const data = await res.json();
-            setReposCount(data.length || 0);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      } else if (!data.session) {
+
+      if (!data.session) {
         router.push("/");
       } else {
         setUser(data.session.user);
@@ -90,9 +71,9 @@ export default function BillingPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border pb-6 shrink-0">
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.push("/dashboard")}
             className="text-zinc-500 hover:text-zinc-900 cursor-pointer rounded-lg border border-border bg-white shadow-sm"
           >
@@ -120,7 +101,7 @@ export default function BillingPage() {
               </Badge>
             </div>
           </CardHeader>
-          
+
           <CardContent className="flex flex-col gap-6 border-t border-border pt-6 text-left">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Repos usage */}
@@ -130,8 +111,8 @@ export default function BillingPage() {
                   <span className="text-zinc-900 font-mono">{reposCount} / {maxRepos} Active</span>
                 </div>
                 <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-primary h-full transition-all duration-500 rounded-full" 
+                  <div
+                    className="bg-primary h-full transition-all duration-500 rounded-full"
                     style={{ width: `${(reposCount / maxRepos) * 100}%` }}
                   />
                 </div>
@@ -144,8 +125,8 @@ export default function BillingPage() {
                   <span className="text-zinc-900 font-mono">{activeReviews} / {maxReviews} Completed</span>
                 </div>
                 <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-indigo-500 h-full transition-all duration-500 rounded-full" 
+                  <div
+                    className="bg-indigo-500 h-full transition-all duration-500 rounded-full"
                     style={{ width: `${(activeReviews / maxReviews) * 100}%` }}
                   />
                 </div>
@@ -158,8 +139,8 @@ export default function BillingPage() {
                   <span className="text-zinc-900 font-mono">{storageUsed} MB / {maxStorage} MB</span>
                 </div>
                 <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-emerald-500 h-full transition-all duration-500 rounded-full" 
+                  <div
+                    className="bg-emerald-500 h-full transition-all duration-500 rounded-full"
                     style={{ width: `${(parseFloat(storageUsed) / maxStorage) * 100}%` }}
                   />
                 </div>
@@ -170,7 +151,7 @@ export default function BillingPage() {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-semibold">
               <span className="text-zinc-500 font-sans">Need higher vector limits and private repositories scan?</span>
-              <Button 
+              <Button
                 onClick={() => setShowWaitlistModal(true)}
                 className="bg-primary hover:bg-primary/95 text-white font-bold h-9 px-4 rounded-lg cursor-pointer shadow-sm"
               >
@@ -243,7 +224,7 @@ export default function BillingPage() {
                   </li>
                 </ul>
               </div>
-              <Button 
+              <Button
                 onClick={() => setShowWaitlistModal(true)}
                 className="w-full bg-primary hover:bg-primary/95 text-white text-xs font-bold mt-6 h-9 cursor-pointer shadow-sm rounded-lg"
               >
@@ -278,7 +259,7 @@ export default function BillingPage() {
                   </li>
                 </ul>
               </div>
-              <Button 
+              <Button
                 onClick={() => setShowWaitlistModal(true)}
                 className="w-full bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold mt-6 h-9 cursor-pointer shadow-sm rounded-lg"
               >
