@@ -50,6 +50,19 @@ DO $$ BEGIN
   IF NOT EXISTS(SELECT 1 FROM match_code_chunks(array_fill(0.1::real,ARRAY[768])::vector,0.0,8,current_setting('test.repo')::uuid)) THEN RAISE EXCEPTION 'Owner vector retrieval broken'; END IF;
   IF NOT EXISTS(SELECT 1 FROM search_code_chunks('authentication',current_setting('test.repo')::uuid,8)) THEN RAISE EXCEPTION 'Owner lexical retrieval broken'; END IF;
 END $$;
+DO $$
+DECLARE generated jsonb; repeated jsonb; reply uuid; replies int;
+BEGIN
+  generated := begin_chat_request(current_setting('test.repo')::uuid,'fixture question','rpc-fixture',current_setting('test.session')::uuid);
+  IF generated->>'status'<>'generate' THEN RAISE EXCEPTION 'Owner chat claim failed'; END IF;
+  repeated := begin_chat_request(current_setting('test.repo')::uuid,'fixture question','rpc-fixture',current_setting('test.session')::uuid);
+  IF repeated->>'status'<>'busy' THEN RAISE EXCEPTION 'Duplicate running claim was not blocked'; END IF;
+  reply := complete_chat_request((generated->>'claim_id')::uuid,'fixture answer','[]'::jsonb);
+  repeated := begin_chat_request(current_setting('test.repo')::uuid,'fixture question','rpc-fixture',current_setting('test.session')::uuid);
+  IF repeated->>'status'<>'replay' THEN RAISE EXCEPTION 'Completed claim did not replay'; END IF;
+  SELECT count(*) INTO replies FROM chat_messages WHERE reply_to=(generated->>'user_message_id')::uuid;
+  IF reply IS NULL OR replies<>1 THEN RAISE EXCEPTION 'Reply persistence/idempotency failed'; END IF;
+END $$;
 SELECT set_config('request.jwt.claim.sub',current_setting('test.other'),true);
 SELECT set_config('request.jwt.claims',json_build_object('sub',current_setting('test.other'),'role','authenticated')::text,true);
 DO $$ BEGIN

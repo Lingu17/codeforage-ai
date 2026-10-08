@@ -15,8 +15,8 @@ The canonical application is root `backend/` and `frontend/`. The previous pass 
 | HTTP liveness/docs | PASS, 200 |
 | Database REST connectivity | PASS, 200 |
 | Schema contract/readiness | FAIL, required V6/V7 columns/table missing; /ready 503 |
-| Live migrations and two-user RLS | NOT VERIFIED, no staging database/admin connection; live writes prohibited |
-| SQL outer syntax | PASS, V2–V7/base/test scripts parsed; catalog and PLpgSQL execution NOT VERIFIED |
+| Disposable database/schema/RLS in GitHub CI | PASS on the initial release workflow; live Supabase RLS remains NOT VERIFIED |
+| SQL verification | PASS outer syntax; V3–V7 and catalog/RLS checks executed successfully in disposable CI PostgreSQL; live Supabase execution NOT VERIFIED |
 | Public GitHub metadata/clone/parsing | PASS, pallets/itsdangerous, 30 files and 74 chunks |
 | GitHub OAuth/private clone | NOT VERIFIED, no connected authenticated browser/token flow |
 | Live Gemini embedding/generation | PASS, one valid 768-dimensional vector and nonempty text |
@@ -58,6 +58,6 @@ Risk: crafted glob patterns can exhaust tooling stacks. These packages are outsi
 
 ## Remaining release gates
 
-Apply the reviewed migration plan only after backup/maintenance approval and successful disposable/staging SQL execution. Verify two-user isolation, OAuth/private import, actual indexed RAG/citations, cancellation/crash recovery, deployed configuration, full accessibility and load. The API smoke and CI database workflow were added but cannot count as live PASS until run in their required environments. Security rules/import resolution remain explicitly limited; scan workers and contact rate limiting remain process-local. Legacy non-stream chat does not use the streamed claim mechanism. Paid plans and billing are not implemented.
+Apply the reviewed migration plan only after backup/maintenance approval and successful disposable/staging SQL execution. Verify two-user isolation, OAuth/private import, actual indexed RAG/citations, cancellation/crash recovery, deployed configuration, full accessibility and load. The API smoke remains unexecuted. The disposable database CI job successfully initialized pgvector, applied migrations and ran schema/RLS tests: [verified job](https://github.com/Lingu17/codeforage-ai/actions/runs/37783671865/job/113332830219). This is not live Supabase verification. The initial backend CI test failure exposed a dependency on local credentials; test setup now supplies placeholders before configuration loading. Inspect the latest workflow after the follow-up test commit. Security rules/import resolution remain explicitly limited; scan workers and contact rate limiting remain process-local. Legacy non-stream chat does not use the streamed claim mechanism. Paid plans and billing are not implemented.
 
 Production readiness: **NOT READY**. GitHub synchronization publishes the verified local fixes and documented limitations; it does not certify deployment readiness.
