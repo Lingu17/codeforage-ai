@@ -39,4 +39,4 @@ docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codefo
 docker compose -f compose.db-test.yml down
 ```
 
-CI runs these same disposable database checks. CI results must be inspected after pushing; configuration alone is not a PASS. Migrations V2–V7 and the database test SQL were syntax-parsed locally; actual catalog/PLpgSQL execution and RLS isolation remain **NOT VERIFIED**.
+CI runs these same disposable database checks. The initial release CI successfully initialized the disposable database, applied V3–V7, and executed the catalog and two-user RLS checks. See the linked database job in AUDIT.md. V2–V7/base/test SQL also passed local outer syntax parsing. This validates the disposable role setup; live Supabase catalog, policies and authentication remain **NOT VERIFIED**. Inspect the latest workflow after changes.

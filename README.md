@@ -81,7 +81,7 @@ See `AUDIT.md` for final evidence. Production readiness: **NOT READY** pending e
 
 ## Release and deployment gates
 
-Read `DATABASE_RELEASE_PLAN.md` before applying migrations. Run `python backend/schema_check.py` for read-only schema diagnostics. Disposable PostgreSQL/pgvector verification is defined in `compose.db-test.yml`; see the release plan for exact commands. Docker is unavailable here, so that workflow and container execution remain unverified.
+Read `DATABASE_RELEASE_PLAN.md` before applying migrations. Run `python backend/schema_check.py` for read-only schema diagnostics. Disposable PostgreSQL/pgvector verification is defined in `compose.db-test.yml`; see the release plan for exact commands. Docker is unavailable locally. The disposable database workflow subsequently passed in GitHub CI; live Supabase RLS and the application Docker image remain unverified.
 
 For a configured staging API and existing scanned test repository, set `CODEFORGE_SMOKE_URL`, `CODEFORGE_SMOKE_TOKEN`, and `CODEFORGE_SMOKE_REPO_ID`, then run `python tools/e2e_smoke.py`. The default smoke reads authenticated reports only. `--chat` explicitly writes three cited test chats; use it only on authorized staging data. It does not replace browser OAuth/private import testing.
 
