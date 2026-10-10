@@ -10,11 +10,12 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { getModuleUrl } from "@/utils/navigation";
 import { Button } from "@/components/ui/button";
+import { githubUsername } from "@/utils/githubImport";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   const [user, setUser] = useState<any>(null);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
@@ -25,7 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         setUser(data.user);
-        // Cache credentials for the landing page account chooser
+        // Cache display metadata for the landing page account chooser.
         localStorage.setItem("saved_github_username", data.user.user_metadata?.user_name || "");
         localStorage.setItem("saved_github_avatar", data.user.user_metadata?.avatar_url || "");
         localStorage.setItem("saved_github_email", data.user.email || "");
@@ -46,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const avatarUrl = user?.user_metadata?.avatar_url;
-  const username = user?.user_metadata?.user_name || "Developer";
+  const username = githubUsername(user) || "Account";
 
   // Close mobile drawer when route changes
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <a href="https://github.com/Lingu17" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors flex items-center gap-1 font-semibold">
                 GitHub: @Lingu17
               </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors text-primary font-bold">
+              <a href="https://linkedin.com/in/lingraj-malipatil-a2735a241" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors text-primary font-bold">
                 LinkedIn Profile &rarr;
               </a>
             </div>
@@ -132,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span>CodeForge AI</span>
               <span className="text-[8px] bg-zinc-100 px-1.5 py-0.5 rounded border border-border font-mono text-zinc-600">v1.0.0</span>
             </div>
-            <span className="text-left text-[8px] text-zinc-400">Built with Next.js 15 • Supabase • Gemini • PostgreSQL</span>
+            <span className="text-left text-[10px] text-zinc-500">Repository intelligence workspace</span>
           </div>
         </div>
       </div>

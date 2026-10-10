@@ -1,5 +1,7 @@
 """Validate configuration without printing secret values."""
 import os
+import base64
+import json
 from urllib.parse import urlsplit
 from dotenv import load_dotenv
 from pathlib import Path
@@ -7,7 +9,24 @@ from pathlib import Path
 load_dotenv(Path(__file__).with_name('.env'))
 
 
+def is_privileged_supabase_key(key):
+    if key.startswith('sb_secret_'):
+        return True
+    try:
+        payload = key.split('.')[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
+        return isinstance(claims, dict) and claims.get('role') == 'service_role'
+    except (IndexError, ValueError, UnicodeError):
+        return False
+
+
+def validate_public_supabase_key(key):
+    if is_privileged_supabase_key(key or ''):
+        raise RuntimeError('SUPABASE_ANON_KEY must be a public anon or publishable key')
+
+
 def validate_config():
+    validate_public_supabase_key(os.getenv('SUPABASE_ANON_KEY'))
     if os.getenv('APP_ENV', 'development') not in ('development', 'test', 'production'):
         raise RuntimeError('APP_ENV must be development, test, or production')
     if int(os.getenv('EMBED_DIM', '768')) != 768:

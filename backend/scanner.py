@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from database import get_supabase_client
 from validation import github_repository_url
+from reporting import unique_graph_edges
 from embedding import embed_batch, valid_vector, retry_count
 import logging
 import base64
@@ -481,13 +482,14 @@ def resolve_dependency_graph(scanned_files: list[dict]) -> dict:
                     'position': {'x': 1100, 'y': 80 + len(external_nodes) * 90},
                     'style': {'background': '#eef2ff', 'color': '#312e81', 'border': '2px dashed #6366f1'},
                 }
-            external_nodes[external_id]['data']['imported_by'].append(f['file_path'])
+            if f['file_path'] not in external_nodes[external_id]['data']['imported_by']:
+                external_nodes[external_id]['data']['imported_by'].append(f['file_path'])
             edges.append({'id': f"external-edge:{f['file_path']}:{external_id}:{imported}",
                           'source': f['file_path'], 'target': external_id,
                           'data': {'external': True, 'import': imported, 'circular': False},
                           'style': {'stroke': '#6366f1', 'strokeDasharray': '4 4'}})
     nodes.extend(external_nodes.values())
-    return {'nodes': nodes, 'edges': edges, 'cycles': cycles}
+    return {'nodes': nodes, 'edges': unique_graph_edges(edges), 'cycles': cycles}
 
 
 def _build_file_summary(scanned_files: list[dict], cap: int = 100):

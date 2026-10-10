@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RagCoverage } from "@/components/RagCoverage";
 import { RecentScanActivity } from "@/components/RecentScanActivity";
 import { getApiUrl } from "@/utils/api";
+import { loadGithubRepositories, githubUsername, publicOrAuthorizedRepository, GitHubImportError, githubResponseError } from "@/utils/githubImport";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,6 +36,8 @@ function DashboardContent() {
   // Ingest states
   const [importUrl, setImportUrl] = useState("");
   const [showImportModal, setShowImportModal] = useState(false);
+  const importDialogRef = useRef<HTMLDivElement>(null);
+  const [resolvingUrl, setResolvingUrl] = useState(false);
   const [analyzingRepoId, setAnalyzingRepoId] = useState<string | null>(null);
   const [jobStatuses, setJobStatuses] = useState<Record<string, any>>({});
   const [stageStatuses, setStageStatuses] = useState<Record<string, ScanStages>>({});
@@ -46,8 +49,26 @@ function DashboardContent() {
   const [loadingSummary, setLoadingSummary] = useState(false);
 
   // GitHub loader errors and sync states
-  const [githubLoadError, setGithubLoadError] = useState(false);
+  const [githubLoadError, setGithubLoadError] = useState<GitHubImportError | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [loadingGithubRepos, setLoadingGithubRepos] = useState(false);
+
+  useEffect(() => {
+    if (!showImportModal) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = importDialogRef.current;
+    dialog?.querySelector<HTMLInputElement>('input')?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowImportModal(false);
+      if (event.key !== 'Tab' || !dialog) return;
+      const elements = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), a[href]')).filter(element => element.getClientRects().length);
+      const first = elements[0], last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => { document.removeEventListener('keydown', onKeyDown); previousFocus?.focus(); };
+  }, [showImportModal]);
 
   // Repository actions UI states
   const [activeActionsMenu, setActiveActionsMenu] = useState<string | null>(null);
@@ -128,30 +149,16 @@ function DashboardContent() {
     }
   }, [supabase]);
 
-  const fetchGithubRepos = useCallback(async (name: string, providerToken?: string | null) => {
+  const fetchGithubRepos = useCallback(async () => {
     setLoadingGithubRepos(true);
-    setGithubLoadError(false);
+    setGithubLoadError(null);
+    setGithubRepos([]);
     try {
       const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      const headers: any = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      if (providerToken) {
-        headers["X-Github-Token"] = providerToken;
-      }
-      const url = getApiUrl(`/api/repos/github?username=${name}`);
-      const res = await fetch(url, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setGithubRepos(data);
-      } else {
-        setGithubLoadError(true);
-      }
-    } catch (e) {
-      console.error(e);
-      setGithubLoadError(true);
+      setSession(data.session);
+      setGithubRepos(await loadGithubRepositories(getApiUrl("/api/repos/github"), data.session));
+    } catch (error) {
+      setGithubLoadError(error instanceof GitHubImportError ? error : new GitHubImportError("Could not reach CodeForge. Check your connection and try again."));
     } finally {
       setLoadingGithubRepos(false);
     }
@@ -199,11 +206,12 @@ function DashboardContent() {
   }, [supabase]);
 
   const handleAnalyze = async (repo: any) => {
+    setActionError(null);
     setAnalyzingRepoId(repo.id.toString());
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      const providerToken = data.session?.provider_token;
+      const providerToken = repo.private === false ? null : data.session?.provider_token;
       const headers: any = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -237,32 +245,30 @@ function DashboardContent() {
         setStageStatuses(prev => ({ ...prev, [result.repository_id]: parseStages(null) }));
         setSelectedRepoId(result.repository_id);
       } else {
-        const errText = await response.text();
-        console.error("Analysis request failed:", errText);
-        alert("Unable to start analysis. Check repository access and try again.");
+        setActionError((await githubResponseError(response, true)).message);
       }
     } catch (e: any) {
       console.error(e);
-      alert("Backend connection failed. Check your connection and try again.");
+      setActionError("The scan could not start. Check your connection and try again.");
     } finally {
       setAnalyzingRepoId(null);
     }
   };
 
   const handleDirectUrlAnalyze = async () => {
-    if (!importUrl) return;
+    if (!importUrl || resolvingUrl) return;
+    setResolvingUrl(true);
+    setActionError(null);
 
     try {
-      const url = new URL(importUrl);
-      const match = url.pathname.match(/^\/([A-Za-z0-9-]+)\/([A-Za-z0-9_.-]+)\/?$/);
-      if (url.protocol !== "https:" || url.hostname !== "github.com" || !match || url.search || url.hash) throw new Error("Invalid URL");
       const { data } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
-      if (data.session?.provider_token) headers.Authorization = `Bearer ${data.session.provider_token}`;
-      const response = await fetch(`https://api.github.com/repos/${match[1]}/${match[2].replace(/\.git$/, "")}`, { headers });
-      if (!response.ok) throw new Error("Repository unavailable");
-      await handleAnalyze(await response.json());
-    } catch { alert("Unable to access that GitHub repository. Check the URL and reconnect GitHub if needed."); }
+      const repo = await publicOrAuthorizedRepository(importUrl, data.session?.provider_token);
+      await handleAnalyze(repo);
+    } catch (error) {
+      setActionError(error instanceof GitHubImportError ? error.message : "Unable to access that repository. Check the URL and your connection.");
+    } finally {
+      setResolvingUrl(false);
+    }
   };
 
   const handleDeleteRepository = async (repoId: string) => {
@@ -292,7 +298,7 @@ function DashboardContent() {
         }
         fetchScannedRepos();
       } else {
-        alert("Failed to delete repository.");
+        setActionError("The repository could not be deleted. Try again.");
       }
     } catch (e) {
       console.error("Error deleting repository:", e);
@@ -372,12 +378,10 @@ useEffect(() => {
       } else {
         setSession(data.session);
         const user = data.session.user;
-        const name = user.user_metadata?.user_name || user.user_metadata?.preferred_username || "Developer";
+        const name = githubUsername(user) || "";
         setUsername(name);
-        fetchScannedRepos();
-        if (name) {
-          fetchGithubRepos(name, data.session?.provider_token);
-        }
+        await fetchScannedRepos();
+        void fetchGithubRepos();
       }
       setLoading(false);
     }
@@ -533,6 +537,8 @@ if (loading) {
   return (
     <div className="flex flex-col h-full bg-background text-foreground min-h-screen relative">
 
+      {actionError && !showImportModal && <div role="alert" className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 flex items-center justify-between gap-3"><span>{actionError}</span><button aria-label="Dismiss error" onClick={() => setActionError(null)} className="p-1 rounded hover:bg-rose-100"><X className="h-4 w-4" /></button></div>}
+
       {/* Top Header */}
       <header className="h-auto md:h-16 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 border-b border-border bg-card/85 backdrop-blur-md z-10 shrink-0 gap-3">
         <div className="flex flex-col">
@@ -557,8 +563,8 @@ if (loading) {
         {/* Dynamic Analytics Widget Banner */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <AnalyticsCard title="Repositories" value={`${totalReposCount} Active`} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Connected</span>} />
-          <AnalyticsCard title="Source Health" value={globalStats.averageHealth ?? "Unavailable"} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Parsed</span>} />
-          <AnalyticsCard title="Files Indexed" value={globalStats.totalFiles ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">File metadata</span>} />
+          <AnalyticsCard title="Source Health" value={globalStats.averageHealth ?? "Unavailable"} trend={<span className="text-[10px] text-primary flex items-center font-mono font-semibold"><TrendingUp className="w-3 h-3 mr-0.5" /> Source rules</span>} />
+          <AnalyticsCard title="Source Files" value={globalStats.totalFiles ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">Discovered file metadata</span>} />
           <AnalyticsCard title="Critical Debt" value={globalStats.criticalIssues ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">Reported critical debt</span>} />
           <AnalyticsCard className="col-span-2 md:col-span-1" title="Chat Sessions" value={globalStats.aiConversations ?? "Unavailable"} trend={<span className="text-[10px] text-muted-foreground font-mono">Sessions</span>} />
         </div>
@@ -659,7 +665,14 @@ if (loading) {
                       <div className="flex justify-between items-start">
                         <div className="truncate pr-6">
                           <h4 className="font-semibold text-sm text-foreground truncate">
-                            {repo.display_name || repo.name}
+                            <button
+                              aria-label={`Select ${repo.display_name || repo.name}`}
+                              aria-pressed={isSelected}
+                              onClick={(e) => { e.stopPropagation(); setSelectedRepoId(repo.id); }}
+                              className="cursor-pointer rounded text-left focus-visible:outline-2 focus-visible:outline-primary"
+                            >
+                              {repo.display_name || repo.name}
+                            </button>
                           </h4>
                           <span className="text-[10px] text-muted-foreground font-mono">{repo.full_name}</span>
                         </div>
@@ -667,6 +680,8 @@ if (loading) {
                         {/* Settings Dropdown Button */}
                         <div className="absolute top-4 right-4 z-20">
                           <button
+                            aria-label={`Actions for ${repo.display_name || repo.name}`}
+                            aria-expanded={activeActionsMenu === repo.id}
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveActionsMenu(activeActionsMenu === repo.id ? null : repo.id);
@@ -841,7 +856,7 @@ if (loading) {
                               </Badge>
                               <h3 className="text-base font-bold text-zinc-900 mt-2">Scan Analysis Failed</h3>
                               <p className="text-xs text-rose-650 leading-relaxed mt-1 font-sans">
-                                The code analysis pipeline encountered a compilation or parsing error:
+                                The scan could not finish. Review the reason below before retrying:
                               </p>
                               <div className="bg-rose-50/50 border border-rose-100 p-3 rounded-lg font-mono text-[10px] text-rose-700 mt-3 whitespace-pre-wrap leading-relaxed">
                                 {activeJob?.error_message || "Scan unavailable or interrupted. Retry the scan."}
@@ -864,14 +879,14 @@ if (loading) {
                   if (loadingSummary || !isScanCompleted) {
                     /* Show Skeletons and Live Ingestion Checklist */
                     let statusTitle = "Analyzing Repository Structure";
-                    let statusDesc = "Please wait. CodeForge AI background systems are scanning files, calculating health, and extracting modules.";
+                    let statusDesc = "Your scan is running. Progress and completed steps appear below.";
 
                     if (scanStatus === "queued") {
                       statusTitle = "Repository Queued for Analysis";
                       statusDesc = "Waiting for an execution worker slot to begin pipeline ingestion.";
                     } else if (scanStatus === "cloning") {
                       statusTitle = "Cloning Repository Codebase";
-                      statusDesc = "Pulling code nodes and files from GitHub via authenticated OAuth session.";
+                      statusDesc = "Downloading the repository from GitHub with its required access permissions.";
                     } else if (scanStatus === "analyzing") {
                       statusTitle = "Building Repository Intelligence";
                       statusDesc = "Parsing Abstract Syntax Trees (ASTs), mapping references, and resolving circular dependencies.";
@@ -963,13 +978,13 @@ if (loading) {
                           <div className="flex justify-between items-center">
                             <div>
                               <Badge variant="outline" className="border-primary/30 text-primary mb-2 text-[10px] font-mono">
-                                Active AI Analysis
+                                Repository Overview
                               </Badge>
                               <CardTitle className="text-xl text-foreground font-bold tracking-tight">
                                 {repoSummary.repository.display_name || repoSummary.repository.name}
                               </CardTitle>
                               <CardDescription className="text-muted-foreground mt-1 text-xs line-clamp-2">
-                                {repoSummary.repository.description || "No description loaded."}
+                                {(repoSummary.repository.description || "No description loaded.").replace(/\s*\|\s*Health:\s*\d+(?:\.\d+)?\/100\b/g, "")}
                               </CardDescription>
                             </div>
 
@@ -992,7 +1007,7 @@ if (loading) {
                                     className="transition-all duration-1000"
                                   />
                                 </svg>
-                                <span className="text-base font-bold font-mono text-primary">{repoSummary.health_score ?? "Unavailable"}</span>
+                                <span className="text-base font-bold font-mono text-primary" aria-label={repoSummary.health_score == null ? "Health score not measured" : `Health score ${repoSummary.health_score}`}>{repoSummary.health_score ?? "—"}</span>
                               </div>
                               <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Health Score</span>
                             </div>
@@ -1024,8 +1039,8 @@ if (loading) {
                           <div className="flex flex-col gap-1">
                             <span className="text-muted-foreground">Risk Assessment</span>
                             <span className={`font-semibold ${
-                              repoSummary.risk_level === 'High' ? 'text-rose-600' : 'text-emerald-600'
-                            }`}>{repoSummary.risk_level} Risk</span>
+                              repoSummary.risk_level === 'High' ? 'text-rose-600' : repoSummary.risk_level === 'Medium' ? 'text-amber-600' : repoSummary.risk_level === 'Low' ? 'text-emerald-600' : 'text-muted-foreground'
+                            }`}>{['High', 'Medium', 'Low'].includes(repoSummary.risk_level) ? `${repoSummary.risk_level} risk` : 'Not measured'}</span>
                           </div>
                         </CardContent>
 
@@ -1186,11 +1201,11 @@ if (loading) {
       {/* GitHub Repo Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-[95vw] md:max-w-2xl p-6 shadow-xl flex flex-col gap-6 max-h-[85vh]">
+          <div ref={importDialogRef} role="dialog" aria-modal="true" aria-labelledby="import-repository-title" className="bg-card border border-border rounded-2xl w-full max-w-[95vw] md:max-w-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4 sm:gap-6 max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Import Repository</h3>
-                <p className="text-xs text-muted-foreground">Import directly via clone URL or select one of your public GitHub repositories.</p>
+                <h3 id="import-repository-title" className="text-lg font-semibold text-foreground">Import Repository</h3>
+                <p className="text-xs text-muted-foreground">Enter a GitHub URL or select a repository you can access.</p>
               </div>
               <Button
                 variant="ghost"
@@ -1209,6 +1224,7 @@ if (loading) {
                 <input
                   type="text"
                   placeholder="https://github.com/owner/repo"
+                  aria-label="GitHub repository URL"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                   className="bg-white border border-border rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground w-full"
@@ -1219,19 +1235,20 @@ if (loading) {
 
               <Button
                 onClick={handleDirectUrlAnalyze}
-                disabled={analyzingRepoId !== null || !importUrl.trim()}
+                disabled={resolvingUrl || analyzingRepoId !== null || !importUrl.trim()}
                 className="bg-primary hover:bg-primary/95 text-white cursor-pointer font-bold text-xs h-11 w-full rounded-xl mt-2 flex items-center justify-center gap-1.5"
               >
                 {analyzingRepoId === 'custom' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : null}
-                {analyzingRepoId === 'custom' ? "Analyzing Repository..." : "Analyze Repository"}
+                {resolvingUrl || analyzingRepoId !== null ? "Preparing scan..." : "Analyze Repository"}
               </Button>
             </div>
 
+            {actionError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{actionError}</p>}
             <div className="border-t border-border pt-4 flex-1 flex flex-col min-h-0">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Your GitHub Repositories</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Your GitHub Repositories{!session?.provider_token ? " (public only)" : ""}</span>
                 <div className="relative w-48">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-450" />
                   <input
@@ -1244,6 +1261,7 @@ if (loading) {
                 </div>
               </div>
 
+              {!session?.provider_token && <p className="text-xs text-muted-foreground mb-3">Only public repositories are listed. <a href="/auth/github?reconnect=1" className="text-primary underline">Reconnect GitHub</a> to include private repositories you can access.</p>}
               <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
                 {loadingGithubRepos ? (
                   /* Loading Skeletons */
@@ -1265,15 +1283,13 @@ if (loading) {
                     <div className="text-center font-sans">
                       <h5 className="font-semibold text-xs text-foreground">GitHub repositories could not be loaded.</h5>
                       <div className="text-[10px] text-slate-550 mt-2 flex flex-col gap-1 items-center bg-slate-50 border border-border p-3 rounded-lg leading-relaxed">
-                        <span className="font-bold text-[9px] uppercase tracking-wider text-slate-400 mb-1">Possible reasons:</span>
-                        <span>• GitHub permissions missing</span>
-                        <span>• Username unavailable</span>
-                        <span>• API rate limit exceeded</span>
+                        <span role="alert">{githubLoadError.message}</span>
                       </div>
                     </div>
+                    {githubLoadError.reconnect && <a href="/auth/github?reconnect=1" className="text-xs text-primary underline">Reconnect GitHub</a>}
                     <Button
                       size="sm"
-                      onClick={() => fetchGithubRepos(username, session?.provider_token)}
+                      onClick={() => void fetchGithubRepos()}
                       className="bg-slate-100 hover:bg-primary hover:text-white border border-border text-[10px] h-8 px-4 mt-1 font-bold cursor-pointer rounded-lg transition-colors text-slate-700"
                     >
                       Retry
@@ -1281,7 +1297,7 @@ if (loading) {
                   </div>
                 ) : githubRepos.length === 0 ? (
                   <div className="py-8 text-center text-xs text-muted-foreground font-sans">
-                    No repositories found. Ensure your GitHub username is public.
+                    No repositories found for this GitHub account.
                   </div>
                 ) : (
                   githubRepos.filter(repo => repo.name.toLowerCase().includes(searchQuery.toLowerCase())).map((repo) => (
@@ -1296,7 +1312,7 @@ if (loading) {
                       <Button
                         size="sm"
                         onClick={() => handleAnalyze(repo)}
-                        disabled={analyzingRepoId !== null}
+                        disabled={resolvingUrl || analyzingRepoId !== null}
                         className="bg-primary hover:bg-primary/95 text-white text-xs px-3 h-8 flex items-center gap-1 font-semibold transition-colors cursor-pointer rounded-lg"
                       >
                         {analyzingRepoId === repo.id.toString() ? (

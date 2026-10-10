@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 
 PATTERNS = {
+    'Supabase secret key': r'\bsb_secret_[A-Za-z0-9_-]{20,}',
     'GitHub token': r'(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})',
     'Google API key': r'AIza[0-9A-Za-z_-]{30,}',
     'Groq API key': r'gsk_[A-Za-z0-9]{30,}',

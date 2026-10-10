@@ -13,6 +13,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 def get_supabase_client(token: Optional[str] = None) -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Supabase credentials not found in environment variables.")
+    config.validate_public_supabase_key(SUPABASE_KEY)
     client = create_client(SUPABASE_URL, SUPABASE_KEY, options=SyncClientOptions(
         auto_refresh_token=False, persist_session=False, postgrest_client_timeout=30,
     ))
@@ -23,8 +24,10 @@ def get_supabase_client(token: Optional[str] = None) -> Client:
 
 def get_contact_client() -> Client:
     key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-    if not key:
+    if not key or not SUPABASE_URL:
         raise RuntimeError('Contact submission is not configured')
+    if not config.is_privileged_supabase_key(key):
+        raise RuntimeError('Contact submission requires a backend-only Supabase secret or service-role key')
     return create_client(SUPABASE_URL, key, options=SyncClientOptions(
         auto_refresh_token=False, persist_session=False, postgrest_client_timeout=15,
     ))
