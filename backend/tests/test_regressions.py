@@ -297,6 +297,17 @@ def test_external_graph_uses_only_observed_imports():
     assert not any('PostgreSQL' in n['id'] for n in graph['nodes'])
 
 
+def test_repeated_imports_do_not_duplicate_graph_edges_or_dependents():
+    files = [{'file_path': 'app.py', 'language': 'python',
+              'imports': ['datetime', 'datetime', 'datetime.timezone', 'local.module', 'local.module']},
+             {'file_path': 'local/module.py', 'language': 'python', 'imports': []}]
+    graph = scanner.resolve_dependency_graph(files)
+    assert len(graph['edges']) == 3
+    assert len({edge['id'] for edge in graph['edges']}) == len(graph['edges'])
+    external = next(node for node in graph['nodes'] if node['data']['kind'] == 'external')
+    assert external['data']['imported_by'] == ['app.py']
+
+
 @pytest.mark.parametrize('code,attempts',[(401,1),(403,1),(400,1),(429,3),(500,3),(503,3)])
 def test_embedding_provider_failures_have_bounded_retry(code,attempts,monkeypatch):
     class ProviderFailure(Exception): pass

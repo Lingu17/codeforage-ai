@@ -18,6 +18,8 @@ from schema_check import verify_schema
 from scan_recovery import recover_stale_scan, ACTIVE_STATUSES
 import concurrent.futures
 import asyncio
+from github_client import github_error, check_github_response
+from reporting import display_health, indexing_coverage, unique_graph_edges
 
 from database import get_supabase_client
 from scanner import scan_and_analyze_repository, generate_embedding, initial_stages, get_genai_client, GEMINI_AI_MODEL
@@ -75,6 +77,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Retry-After"],
 )
 
 class HealthResponse(BaseModel):
@@ -190,15 +193,6 @@ def get_scanned_repositories(user_id: str = Depends(get_authenticated_user_id), 
         raise HTTPException(status_code=500, detail="The operation could not be completed. Please try again.") from e
 
 # 2. Fetch user's GitHub repositories directly using their github username/token
-def github_error(status):
-    messages = {401: 'GitHub authorization expired. Reconnect your account.',
-                403: 'GitHub access denied or rate limit reached.',
-                404: 'GitHub repository or account not found.',
-                429: 'GitHub rate limit reached. Try again later.'}
-    raise HTTPException(status if status in messages else 502,
-                        messages.get(status, 'GitHub is temporarily unavailable.'))
-
-
 @app.get('/api/repos/github')
 async def get_github_repositories(
     username: Optional[str] = Query(None, max_length=39, pattern=r'^[A-Za-z0-9][A-Za-z0-9-]*$'),
@@ -214,13 +208,22 @@ async def get_github_repositories(
     else:
         raise HTTPException(400, 'Reconnect GitHub or provide a GitHub username.')
     try:
+        repositories = []
         async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.get(url, headers=headers, params={'sort': 'updated', 'per_page': 100})
-        if response.status_code != 200:
-            github_error(response.status_code)
-        return response.json()
+            for page in range(1, 51):
+                response = await client.get(url, headers=headers, params={'sort': 'updated', 'per_page': 100, 'page': page})
+                check_github_response(response)
+                batch = response.json()
+                if not isinstance(batch, list) or any(not isinstance(repo, dict) for repo in batch):
+                    raise ValueError('Invalid repository list')
+                repositories.extend(batch)
+                if len(batch) < 100:
+                    return repositories
+        raise HTTPException(502, 'GitHub returned too many repositories. Import the repository by URL.')
     except httpx.HTTPError as exc:
         raise HTTPException(502, 'GitHub could not be reached. Try again later.') from exc
+    except ValueError as exc:
+        raise HTTPException(502, 'GitHub returned an invalid repository list. Try again later.') from exc
 
 # 3. Create Scan Job & Run Scan Asynchronously
 @app.post("/api/repos/analyze")
@@ -233,15 +236,19 @@ def analyze_repository(
 ):
     try:
         headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'CodeForgeAI'}
-        if x_github_token:
-            headers['Authorization'] = f'Bearer {x_github_token}'
         with httpx.Client(timeout=20) as client:
             github = client.get(f'https://api.github.com/repos/{req.full_name}', headers=headers)
-        if github.status_code != 200:
-            github_error(github.status_code)
+            # Public scans must not depend on a cached/revoked OAuth credential.
+            # Retry only a hidden/not-found resource with this user's credential.
+            if github.status_code == 404 and x_github_token:
+                github = client.get(f'https://api.github.com/repos/{req.full_name}',
+                                    headers={**headers, 'Authorization': f'Bearer {x_github_token}'})
+        check_github_response(github)
         identity = github.json()
         if identity.get('id') != req.github_id or identity.get('full_name', '').lower() != req.full_name.lower():
             raise HTTPException(400, 'Repository identity does not match GitHub.')
+        if identity.get('private') and not x_github_token:
+            raise HTTPException(403, 'Private repositories require GitHub authorization. Reconnect GitHub.')
         supabase = get_supabase_client(token)
 
         # 1. Check or insert repository for this specific user
@@ -294,7 +301,8 @@ def analyze_repository(
             except Exception as e:
                 logging.getLogger("codeforge").error("operation_failed=%s", type(e).__name__)
 
-        background_tasks.add_task(run_scan_in_process, req.repo_url, repo_id, job_id, token, x_github_token)
+        background_tasks.add_task(run_scan_in_process, req.repo_url, repo_id, job_id, token,
+                                  x_github_token if identity.get('private') else None)
 
         return {
             "repository_id": repo_id,
@@ -304,6 +312,8 @@ def analyze_repository(
         }
     except HTTPException:
         raise
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, 'GitHub could not be reached. Try again later.') from exc
     except Exception as e:
         logging.getLogger("codeforge").error("Operation failed: %s", type(e).__name__)
         raise HTTPException(status_code=500, detail="The operation could not be completed. Please try again.") from e
@@ -323,10 +333,7 @@ def get_scan_status(id: UUID, user_id: str = Depends(get_authenticated_user_id),
         if not res.data:
             return {"status": "none", "progress": 0, "current_step": "Not Scanned"}
         job = recover_stale_scan(supabase, res.data[0])
-        embed = (job.get('stages') or {}).get('embed', {})
-        job['rag_coverage'] = {k: embed.get(k) for k in ('files_discovered', 'files_indexed',
-            'chunks_expected', 'chunks_indexed', 'chunks_failed', 'coverage_percentage')}
-        job['rag_coverage']['status'] = {'completed': 'COMPLETE', 'partial': 'PARTIAL', 'failed': 'FAILED'}.get(embed.get('status'), 'INDEXING')
+        job['rag_coverage'] = indexing_coverage(job)
         return job
     except HTTPException:
         raise
@@ -397,8 +404,8 @@ def get_repo_summary(id: UUID, user_id: str = Depends(get_authenticated_user_id)
         overall_score = None
         breakdown = {}
         if scores.data:
-            overall_score = scores.data[0]["overall_score"]
-            breakdown = scores.data[0]
+            breakdown = display_health(scores.data[0])
+            overall_score = breakdown.get('overall_score')
 
         # Fetch reports summaries
         arch = supabase.table("architecture_reports").select("graph_data,summary").eq("repository_id", id).order("created_at", desc=True).limit(1).execute()
@@ -461,7 +468,7 @@ def get_repo_architecture(id: UUID, user_id: str = Depends(get_authenticated_use
             return {"nodes": [], "edges": [], "summary": "No architecture graph generated."}
         return {
             "nodes": res.data[0]["graph_data"]["nodes"],
-            "edges": res.data[0]["graph_data"]["edges"],
+            "edges": unique_graph_edges(res.data[0]["graph_data"]["edges"]),
             "summary": res.data[0]["summary"]
         }
     except HTTPException:

@@ -332,7 +332,7 @@ if (loading) {
 
 
 
-  const letterGrade = score == null ? "Unavailable" : "Partial";
+  const letterGrade = score == null ? "Not measured" : "Source metrics";
 
   const ratingColor = "text-indigo-650";
 
@@ -454,13 +454,13 @@ if (loading) {
 
               <Award className="w-5 h-5 text-primary" />
 
-              <span className="text-xs uppercase tracking-wider text-slate-500 font-bold font-mono">Overall Grade</span>
+              <span className="text-xs uppercase tracking-wider text-slate-500 font-bold font-mono">Source health</span>
 
             </div>
 
             <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
 
-              Codebase Health Grade: <span className={ratingColor}>{letterGrade}</span> ({score ?? "—"}/100)
+              <span className={ratingColor}>{letterGrade}</span>{score != null && ` (${score}/100)`}
 
             </h2>
 
@@ -520,7 +520,7 @@ if (loading) {
 
 
 
-        <p className="text-xs text-zinc-600">Confidence: {breakdown.breakdown?.confidence ?? "Unavailable"} · Last analyzed: {breakdown.created_at ?? "Unavailable"}</p>
+        <p className="text-xs text-zinc-600">Confidence: {breakdown.breakdown?.confidence ?? "Unavailable"} · Last analyzed: {breakdown.created_at ? new Date(breakdown.created_at).toLocaleString() : "Unavailable"}</p>
 
         <details><summary className="cursor-pointer text-sm font-semibold">Why this score?</summary><p className="text-xs">{ratingDesc}</p><pre className="text-xs whitespace-pre-wrap break-words">{JSON.stringify(breakdown.breakdown?.metrics ?? {}, null, 2)}</pre><p className="text-xs">Testing and runtime performance: Not enough data.</p></details>
 

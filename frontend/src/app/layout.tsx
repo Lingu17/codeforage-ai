@@ -25,6 +25,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}
       style={{ scrollBehavior: "smooth" }}
     >

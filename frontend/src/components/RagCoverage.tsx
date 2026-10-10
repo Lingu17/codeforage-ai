@@ -11,7 +11,8 @@ export interface Coverage {
 export function RagCoverage({ coverage }: { coverage?: Coverage }) {
   return (
     <section aria-label="Repository indexing coverage" className="rounded-xl border border-border bg-white p-4 text-left">
-      <h3 className="text-xs font-bold">RAG index · {coverage?.status ?? "NOT VERIFIED"}</h3>
+      <h3 className="text-xs font-bold">Repository indexing · {coverage?.status === "NOT VERIFIED" || !coverage?.status ? "Coverage unavailable" : coverage.status.toLowerCase()}</h3>
+      {coverage?.chunks_expected == null && <p className="mt-2 text-xs text-zinc-600">This scan has no saved indexing metrics. A new scan will measure coverage.</p>}
       <p className="mt-2 text-sm font-mono">
         {coverage?.chunks_indexed ?? "—"} / {coverage?.chunks_expected ?? "—"} chunks indexed
         {coverage?.coverage_percentage != null && ` · ${coverage.coverage_percentage}% coverage`}

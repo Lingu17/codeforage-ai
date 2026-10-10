@@ -1,5 +1,16 @@
 # Database release plan — V6/V7
 
+## Current status - 2026-10-10
+
+The historical missing-schema status below is superseded by the user-authorized
+live repair recorded in AUDIT.md. V3/V4/V6/V7/V8, catalog contract assertions and
+row-count preservation checks committed in one transaction. Restricted in-project
+recovery snapshot: codeforge_recovery_20261010_01 (not an independent full backup).
+Live schema_check.py passes; /ready returns 200. Actual local OAuth sign-in and
+repository listing also succeed after explicitly approved local callback URLs.
+Do not rerun these steps blindly. Two-user live RLS and full import/chat acceptance
+remain unverified; use staging for those remaining tests.
+
 No live schema or production rows were changed during this release pass. The configured Supabase REST endpoint is reachable (HTTP 200). The original SDK failure was `AttributeError: ClientOptions has no attribute storage`; the client now uses `SyncClientOptions`. The readiness endpoint deliberately remains 503 because required deployed columns/tables are absent.
 
 Read-only inspection found missing `repositories.default_branch`, `repository_scans.stages`, `code_chunks.line_start`, `chat_messages.reply_to`, `security_reports.scope`, and the `chat_requests` table. These findings prove an incomplete schema contract; they do not establish which historical migrations were previously run.
