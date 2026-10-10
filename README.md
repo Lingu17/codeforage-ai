@@ -65,22 +65,9 @@ Repository code is parsed, **not executed**. Retrieved source is treated as untr
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    User["Next.js 16 · React 19"] -->|User session| API["FastAPI"]
-    Auth["Supabase Auth<br/>GitHub OAuth"] -.-> User
-    API -->|Verified identity & access| GitHub["GitHub repositories"]
-    GitHub --> Scan["Scan pipeline<br/>Parse · graph · source rules"]
-    Scan --> Gemini["Gemini<br/>Embeddings"]
-    Scan --> DB[("Supabase PostgreSQL<br/>pgvector · owner RLS")]
-    Gemini --> DB
-    API --> Retrieval["Hybrid retrieval<br/>Vector + lexical"]
-    Retrieval --> DB
-    Retrieval --> Groq["Groq<br/>Repository chat"]
-    Groq -->|SSE answer + citations| User
-    API --> Review["Gemini PR review<br/>Diff validation"]
-    Review --> DB
-```
+<p align="center">
+  <img src="docs/assets/architecture.svg" alt="CodeForge AI architecture: Next.js uses Supabase GitHub authentication and calls FastAPI. The API orchestrates source scans, owner-scoped PostgreSQL/pgvector retrieval, Gemini embeddings and PR review, and Groq chat streamed with citations." width="1100" />
+</p>
 
 - **Frontend:** Next.js App Router, TypeScript, Tailwind CSS, React Flow, and Supabase session handling.
 - **Backend:** FastAPI, source parsing, scan orchestration, hybrid retrieval, and streamed chat.
