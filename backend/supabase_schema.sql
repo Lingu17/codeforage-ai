@@ -306,10 +306,14 @@ create table if not exists chat_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
   repository_id uuid references repositories(id) on delete cascade not null,
-  request_id text not null,
-  status text not null default 'queued',
+  request_id text not null check (length(request_id) between 1 and 100),
+  question text not null check (length(question) between 1 and 8000),
+  session_id uuid references chat_sessions(id) on delete cascade,
+  user_message_id uuid references chat_messages(id) on delete cascade,
+  status text not null default 'running' check (status in ('running','completed','failed','cancelled')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, repository_id, request_id)
 );
 
 -- Enable RLS on chat_requests
