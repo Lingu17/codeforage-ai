@@ -12,6 +12,8 @@ create table if not exists repositories (
   language text,
   owner_username text not null,
   user_id uuid, -- Associated Supabase User ID (optional reference to auth.users)
+  default_branch text, -- added in V6
+  scan_commit text,    -- added in V6
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -24,7 +26,10 @@ create table if not exists repository_scans (
   current_step text not null default 'Queued',
   started_at timestamp with time zone default timezone('utc'::text, now()) not null,
   completed_at timestamp with time zone,
-  error_message text
+  error_message text,
+  stages jsonb default '{}',            -- added in V6
+  heartbeat_at timestamp with time zone default now(), -- added in V6
+  cancel_requested boolean not null default false   -- added in V6
 );
 
 -- Table to store extracted code files and their structural metadata (No full code content stored)
@@ -53,6 +58,9 @@ create table if not exists code_chunks (
   chunk_text text not null,
   embedding vector(768) not null,
   language text not null,
+  line_start integer not null default 0,
+  line_end integer not null default 0,
+  embedding_model text not null default 'text-embedding-ada-002',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -106,7 +114,8 @@ create table if not exists security_reports (
   id uuid primary key default gen_random_uuid(),
   repository_id uuid references repositories(id) on delete cascade not null,
   security_score integer not null, -- 0 to 100
-  vulnerabilities jsonb not null default '[]', -- [{ "severity": "High", "file": "...", "line": 5, "description": "..." }]
+  vulnerabilities jsonb not null default '[]',
+  scope text not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -139,6 +148,7 @@ create table if not exists chat_messages (
   role text not null, -- 'user' or 'assistant'
   content text not null,
   citations jsonb not null default '[]', -- Array of file paths used as source reference
+  reply_to uuid references chat_messages(id) on delete cascade, -- added in V6
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -290,3 +300,17 @@ alter table contact_messages enable row level security;
 -- Policy: Allow anyone (unauthenticated/anon) to insert submissions
 -- Contact insertion requires the server service role.
 REVOKE INSERT ON contact_messages FROM anon, authenticated;
+
+-- Table to store chat request sessions
+create table if not exists chat_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  repository_id uuid references repositories(id) on delete cascade not null,
+  request_id text not null,
+  status text not null default 'queued',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS on chat_requests
+alter table chat_requests enable row level security;
