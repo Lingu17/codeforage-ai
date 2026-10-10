@@ -21,7 +21,7 @@ INSERT INTO embeddings(chunk_id,embedding) VALUES(current_setting('test.chunk'):
 INSERT INTO repository_scans(repository_id,status) VALUES(current_setting('test.repo')::uuid,'completed');
 INSERT INTO architecture_reports(repository_id,graph_data) VALUES(current_setting('test.repo')::uuid,'{}');
 INSERT INTO technical_debt_reports(repository_id,debt_score) VALUES(current_setting('test.repo')::uuid,NULL);
-INSERT INTO security_reports(repository_id,security_score) VALUES(current_setting('test.repo')::uuid,100);
+INSERT INTO security_reports(repository_id,security_score,scope) VALUES(current_setting('test.repo')::uuid,100,'repo');
 INSERT INTO health_scores(repository_id,overall_score) VALUES(current_setting('test.repo')::uuid,NULL);
 INSERT INTO pr_reviews(repository_id,diff_content,summary,risk_level) VALUES(current_setting('test.repo')::uuid,'test','fixture','Low');
 INSERT INTO chat_sessions(id,repository_id) VALUES(current_setting('test.session')::uuid,current_setting('test.repo')::uuid);
