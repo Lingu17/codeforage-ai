@@ -40,3 +40,12 @@ docker compose -f compose.db-test.yml down
 ```
 
 CI runs these same disposable database checks. The initial release CI successfully initialized the disposable database, applied V3–V7, and executed the catalog and two-user RLS checks. See the linked database job in AUDIT.md. V2–V7/base/test SQL also passed local outer syntax parsing. This validates the disposable role setup; live Supabase catalog, policies and authentication remain **NOT VERIFIED**. Inspect the latest workflow after changes.
+
+
+V8 repairs partial chat claim tables after V7. Apply `backend/migration_v8.sql`
+before schema/RLS checks. It preserves legacy NULL questions and allows their
+status updates, while rejecting missing/invalid questions on new requests.
+It removes inherited permissive chat policies and reloads PostgREST. CI applies
+V8 twice, then tests missing/partial tables in a disposable database before RLS.
+`backend/tests/migration_v8.sql` is destructive disposable CI setup; never run
+it on staging or production. Local SQL parsing does not verify trigger/RLS behavior.

@@ -20,4 +20,5 @@ services:
       - ./backend/migration_v5.sql:/docker-entrypoint-initdb.d/05.sql:ro
       - ./backend/migration_v6.sql:/docker-entrypoint-initdb.d/06.sql:ro
       - ./backend/migration_v7.sql:/docker-entrypoint-initdb.d/07.sql:ro
+      - ./backend:/backend:ro
       - ./backend/tests:/tests:ro

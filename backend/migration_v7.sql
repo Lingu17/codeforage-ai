@@ -31,7 +31,7 @@ BEGIN
   IF claim.id IS NULL THEN
     SELECT * INTO claim FROM chat_requests WHERE user_id=auth.uid()
       AND repository_id=repo_id AND request_id=client_request_id FOR UPDATE;
-    IF claim.question<>question_text OR (existing_session IS NOT NULL AND existing_session<>claim.session_id) THEN
+    IF claim.question IS DISTINCT FROM question_text OR (existing_session IS NOT NULL AND existing_session<>claim.session_id) THEN
       RETURN jsonb_build_object('status','conflict');
     END IF;
     IF claim.status='completed' THEN

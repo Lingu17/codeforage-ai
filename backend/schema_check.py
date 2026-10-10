@@ -5,7 +5,7 @@ REQUIRED_COLUMNS = {
     'repository_files': 'id,repository_id,file_path,hash',
     'code_chunks': 'id,line_start,line_end,embedding_model',
     'chat_messages': 'id,reply_to',
-    'chat_requests': 'id,status,request_id',
+    'chat_requests': 'id,user_id,repository_id,status,request_id,question,session_id,user_message_id,updated_at',
     'security_reports': 'id,scope',
     'health_scores': 'id,testing_score,performance_score,breakdown',
 }
