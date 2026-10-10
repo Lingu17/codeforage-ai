@@ -602,3 +602,27 @@ BLOCKED / NOT VERIFIED release gates:
   payments/team/API-token functionality remains as currently implemented or roadmap.
 - No deployed website verification or deployment action is claimed. Passing local
   checks cannot establish universal absence of glitches or production readiness.
+
+## Authorized publication and exact-commit CI result - 2026-10-10
+
+VERIFIED: committed the preserved work as
+ddc6378940a83e30b06c30f1d61f42636104b6e4 and pushed origin/main with no force push.
+Working tree was clean. Actual GitHub Actions run 38039631806 for that exact SHA
+completed with success in database, backend, and frontend jobs:
+https://github.com/Lingu17/codeforage-ai/actions/runs/38039631806
+This closes the updated CODE commit's Docker CI gap; the workflow runs its
+migration replay, partial-schema, schema-contract, chat RPC and two-user isolation
+checks on the GitHub runner. The earlier pending-publication status is superseded.
+
+GitHub deployment metadata also reports the existing Vercel integration's
+Production deployment of the same SHA succeeded. This was automatically triggered
+by the authorized push; no separate deployment command, credential or setting
+change was performed. Its deployment URL opens Vercel sign-in in the available
+browser, so deployed application behavior is BLOCKED by absent authorized Vercel
+access and NOT independently verified. Deployment success is not proof that a
+hosted backend is configured or that production OAuth/import/chat work.
+
+The local production frontend and backend remain running on ports 3000 and 8000.
+The documentation-only follow-up recording these results is published separately;
+its own CI status must be checked after its push. Remaining development audit,
+lint-warning, private-import and live distinct-user isolation limits above remain.
