@@ -88,3 +88,12 @@ For a configured staging API and existing scanned test repository, set `CODEFORG
 Build a backend image with `docker build -t codeforge-backend backend`. Provide server environment values through your deployment's secret store, set `APP_ENV=production`, configure the tested generation model explicitly, and allow only the actual HTTPS frontend origin. The current local environment lacks production `GEMINI_AI_MODEL` and `ALLOWED_ORIGINS`; do not deploy it as-is. The frontend uses `npm run build` and `npm run start` with public configuration. Backend `/ready` must pass before routing production traffic. Deploy a single backend worker; this version has persisted state and stale recovery, not a distributed worker queue.
 
 Run `python tools/check_release.py` before staging and `python tools/check_release.py --staged` before committing. These scans inspect candidate/indexed Git content without reading ignored local env files or printing credential values. They are signature checks, not a guarantee of secret absence.
+
+
+V8 repairs partial chat claim tables after V7. Apply `backend/migration_v8.sql`
+before schema/RLS checks. It preserves legacy NULL questions and allows their
+status updates, while rejecting missing/invalid questions on new requests.
+It removes inherited permissive chat policies and reloads PostgREST. CI applies
+V8 twice, then tests missing/partial tables in a disposable database before RLS.
+`backend/tests/migration_v8.sql` is destructive disposable CI setup; never run
+it on staging or production. Local SQL parsing does not verify trigger/RLS behavior.

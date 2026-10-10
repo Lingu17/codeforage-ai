@@ -308,12 +308,15 @@ def test_embedding_provider_failures_have_bounded_retry(code,attempts,monkeypatc
     assert provider.models.embed_content.call_count==attempts
 
 
-@pytest.mark.parametrize('name',['supabase_schema.sql','migration_v2.sql','migration_v3.sql','migration_v4.sql','migration_v5.sql','migration_v6.sql','migration_v7.sql','tests/db_bootstrap.sql','tests/rls_isolation.sql','tests/schema_contract.sql'])
+@pytest.mark.parametrize('name',['supabase_schema.sql','migration_v2.sql','migration_v3.sql','migration_v4.sql','migration_v5.sql','migration_v6.sql','migration_v7.sql','migration_v8.sql','tests/db_bootstrap.sql','tests/rls_isolation.sql','tests/schema_contract.sql'])
 def test_migration_and_database_test_sql_parses(name):
     from pathlib import Path
     from pglast import parse_sql
     source=(Path(__file__).resolve().parents[1]/name).read_text(encoding='utf8')
     assert parse_sql(source)
+    if name in ('migration_v7.sql', 'migration_v8.sql'):
+        from pglast import parse_plpgsql
+        assert parse_plpgsql(source)
     assert 'DROP COLUMN' not in source.upper()
 
 
@@ -346,3 +349,51 @@ def test_worker_cannot_revive_terminal_scan():
     runner._persist('embedding',20)
     assert runner.cancel.is_set()
     assert db.table.return_value.update.return_value.eq.return_value.in_.call_args.args[0]=='status'
+
+
+@pytest.mark.parametrize('github_token', [None, 'github-provider-token'])
+def test_github_listing_never_forwards_login_token(github_token):
+    from unittest.mock import AsyncMock
+    main.app.dependency_overrides[main.get_authenticated_user_id] = lambda: 'user-a'
+    upstream = MagicMock(status_code=200)
+    upstream.json.return_value = []
+    outbound = AsyncMock(return_value=upstream)
+    headers = {'Authorization': 'Bearer supabase-login-token'}
+    if github_token:
+        headers['X-GitHub-Token'] = github_token
+    try:
+        with patch('main.httpx.AsyncClient.get', outbound):
+            response = TestClient(main.app).get('/api/repos/github?username=fixture', headers=headers)
+        assert response.status_code == 200
+        sent = outbound.call_args.kwargs['headers']
+        assert sent.get('Authorization') == (f'Bearer {github_token}' if github_token else None)
+        assert outbound.call_args.args[0] == ('https://api.github.com/user/repos' if github_token else 'https://api.github.com/users/fixture/repos')
+    finally:
+        main.app.dependency_overrides.pop(main.get_authenticated_user_id, None)
+
+
+@pytest.mark.parametrize('missing_column', ['question', 'session_id', 'user_message_id', None])
+def test_readiness_checks_complete_chat_claim_columns(missing_column):
+    from schema_check import REQUIRED_COLUMNS, verify_schema
+    required = {'question', 'session_id', 'user_message_id', 'user_id', 'repository_id', 'updated_at'}
+    assert required <= set(REQUIRED_COLUMNS['chat_requests'].split(','))
+    db = MagicMock()
+    def table(name):
+        query = MagicMock()
+        if name == 'chat_requests' and missing_column:
+            def select(columns):
+                assert missing_column in columns.split(',')
+                query.limit.return_value.execute.side_effect = RuntimeError(f'missing {missing_column}')
+                return query
+            query.select.side_effect = select
+        return query
+    db.table.side_effect = table
+    assert verify_schema(db) == ([{'table': 'chat_requests', 'code': 'RuntimeError'}] if missing_column else [])
+    with patch('main.get_supabase_client', return_value=db):
+        response = TestClient(main.app).get('/ready')
+    assert response.status_code == (503 if missing_column else 200)
+    if missing_column:
+        assert 'migrations' in response.json()['detail']
+        assert f'missing {missing_column}' not in response.text
+    else:
+        assert response.json() == {'status': 'ready'}

@@ -1,4 +1,4 @@
--- Read-only catalog assertions after V7; psql must use ON_ERROR_STOP=1.
+-- Read-only catalog assertions after V8; psql must use ON_ERROR_STOP=1.
 BEGIN;
 DO $$
 DECLARE t text; count_policies int;
@@ -15,6 +15,8 @@ BEGIN
     END IF;
   END LOOP;
   IF to_regclass('public.scans_one_active_repo') IS NULL OR to_regclass('public.chunks_lexical_idx') IS NULL OR to_regclass('public.files_id_repo_idx') IS NULL OR to_regclass('public.chunks_file_index_key') IS NULL THEN RAISE EXCEPTION 'Required index missing'; END IF;
+  IF (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='chat_requests' AND column_name IN ('id','user_id','repository_id','status','request_id','question','session_id','user_message_id','updated_at'))<>9 THEN RAISE EXCEPTION 'Chat request columns missing'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='chat_requests'::regclass AND tgname='chat_requests_question_not_null' AND tgenabled='O') THEN RAISE EXCEPTION 'Chat question validation trigger missing'; END IF;
   IF EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='code_chunks'::regclass AND tgname='replicate_chunk_embedding_trigger') THEN RAISE EXCEPTION 'Duplicate embedding trigger remains'; END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='code_chunks'::regclass AND conname='chunks_file_repository_fk') THEN RAISE EXCEPTION 'Repository/file FK missing'; END IF;
   IF EXISTS(SELECT 1 FROM code_chunks c JOIN repository_files f ON f.id=c.file_id WHERE c.repository_id<>f.repository_id) THEN RAISE EXCEPTION 'Legacy mismatched file references require manual review'; END IF;

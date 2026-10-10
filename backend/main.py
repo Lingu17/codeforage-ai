@@ -1,4 +1,4 @@
-﻿import os
+import os
 import httpx
 import json
 from typing import Optional, List

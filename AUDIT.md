@@ -61,3 +61,84 @@ Risk: crafted glob patterns can exhaust tooling stacks. These packages are outsi
 Apply the reviewed migration plan only after backup/maintenance approval and successful disposable/staging SQL execution. Verify two-user isolation, OAuth/private import, actual indexed RAG/citations, cancellation/crash recovery, deployed configuration, full accessibility and load. The API smoke remains unexecuted. The disposable database CI job successfully initialized pgvector, applied migrations and ran schema/RLS tests: [verified job](https://github.com/Lingu17/codeforage-ai/actions/runs/37783671865/job/113332830219). This is not live Supabase verification. The initial backend CI test failure exposed a dependency on local credentials; test setup now supplies placeholders before configuration loading. Inspect the latest workflow after the follow-up test commit. Security rules/import resolution remain explicitly limited; scan workers and contact rate limiting remain process-local. Legacy non-stream chat does not use the streamed claim mechanism. Paid plans and billing are not implemented.
 
 Production readiness: **NOT READY**. GitHub synchronization publishes the verified local fixes and documented limitations; it does not certify deployment readiness.
+
+## Local completion verification — 2026-10-10
+
+
+
+Executed the real SQL in an isolated, in-memory PGlite 0.5.8 PostgreSQL 18.3
+
+runtime with its pgvector extension. Temporary npm tooling was installed outside
+
+the repository; application dependencies and production services were unchanged.
+
+Passed auth bootstrap, base schema, V3–V8, V8 rerun, schema contract, missing/partial
+
+table scenarios, legacy NULL-question status updates, question validation, removal
+
+of permissive policies, NULL-safe claim conflicts, and the complete two-user RLS
+
+isolation/RPC test. These are database execution results, not syntax-only checks.
+
+The Docker PostgreSQL 17 CI job and live Supabase/PostgREST remain unverified.
+
+
+
+Backend tests, frontend tests/typecheck/build, SQL/PLpgSQL parsing, release scan,
+
+runtime dependency audits and diff whitespace checks passed. ESLint reported 127
+
+existing warnings and zero errors. Bandit's configured medium/high gate passed.
+
+The local Git remote now uses a credential-free URL. Exposed GitHub and Supabase
+
+secret credentials require revocation/rotation by their owner; no keys were used
+
+or saved and no production changes, commits or pushes were performed.
+
+
+
+## Verification-gap review - 2026-10-10
+
+Earlier entries record historical checks, not current production state or proof
+of the current uncommitted workflow. Public GitHub API inspection of
+`GET /repos/Lingu17/codeforage-ai/contents/.github/workflows/ci.yml` and
+`GET /repos/Lingu17/codeforage-ai/actions/workflows/ci.yml/runs?per_page=3`
+found published run [38030158325](https://github.com/Lingu17/codeforage-ai/actions/runs/38030158325)
+successful at `2a39d951847f42c1e3cc2809f116b291f7c78e63`. Its database, backend
+and frontend jobs report success. The published workflow has no V8 application
+or partial-schema test and differs from the local workflow. No published run
+verifies the uncommitted changes.
+
+Local order: Docker init applies auth/base/V3-V7; workflow applies V8 twice,
+schema contract, missing/partial-table fixture, schema contract again, then
+RLS isolation with begin/busy/complete/replay chat RPCs. SQL uses ON_ERROR_STOP=1
+and read-only mounts. Embedded verification follows the same SQL order using
+PostgreSQL 18.3 rather than Docker's PostgreSQL 17; a JavaScript loader expands
+psql includes. It does not verify Docker startup/mounts/psql, PostgREST or concurrency.
+
+Commands/results this review:
+- `Get-Content AUDIT.md; git status --short`: existing changes preserved.
+- `Get-Command docker,gh -ErrorAction SilentlyContinue`: neither available.
+- Credential-safe Python inspection of `git remote get-url --all [--push] origin`:
+  fetch/push contain no embedded credentials; URLs were not printed.
+- `python -m pytest backend/tests/test_regressions.py -q -k readiness`:
+  6 passed, 68 deselected. Missing question/session_id/user_message_id each returns
+  503 via the real /ready route with mocked queries; complete schema returns 200.
+- Initial full backend run: 1 failure, 87 passed. A prior encoding rewrite corrupted
+  the citation assertion; repaired it and mixed AUDIT encoding without changing RAG.
+- `node "$env:TEMP\codeforge-db-verify\verify.mjs" "$PWD"`:
+  fresh/partial migrations, reruns, schema/RPC/RLS checks all passed again.
+
+Docker execution remains blocked by the missing executable. Next action: use a
+Docker-enabled machine to run the database job's exact commands in
+`.github/workflows/ci.yml`. Actual GitHub verification requires separately
+human-authorized publication, then inspection of the run for that exact commit.
+No commits, pushes, production connections, secret rotation or deployment occurred.
+
+Final rerun: `python -m pytest backend/tests -q` passed all 88 tests after the
+encoding repair. `git diff --check` passed. No frontend source or configuration
+changed in this review; earlier frontend results were not rerun or represented
+as new verification.
+
+`python tools/check_release.py`: PASS, 111 files scanned, no findings.

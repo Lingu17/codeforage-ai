@@ -6,6 +6,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f compose.db-test.yml up -d --wait
+      - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /backend/migration_v8.sql
+      - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /backend/migration_v8.sql
+      - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /tests/schema_contract.sql
+      - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /tests/migration_v8.sql
       - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /tests/schema_contract.sql
       - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /tests/rls_isolation.sql
       - if: always()
