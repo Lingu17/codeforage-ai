@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RagCoverage } from "@/components/RagCoverage";
 import { RecentScanActivity } from "@/components/RecentScanActivity";
-import { getApiUrl, apiFetch, ApiUnreachableError } from "@/utils/api";
+import { getApiUrl, apiFetch, ApiUnreachableError, warmUpApi, type ApiStatus } from "@/utils/api";
 import { listGithubRepositories, githubUsername, publicOrAuthorizedRepository, GitHubImportError, githubResponseError } from "@/utils/githubImport";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +52,15 @@ function DashboardContent() {
   const [githubLoadError, setGithubLoadError] = useState<GitHubImportError | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [loadingGithubRepos, setLoadingGithubRepos] = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
+  const [slowAnalyze, setSlowAnalyze] = useState(false);
+
+  const checkApi = useCallback((force = false) => {
+    setApiStatus("checking");
+    void warmUpApi(force).then(setApiStatus);
+  }, []);
+
+  useEffect(() => { checkApi(); }, [checkApi]);
 
   const filteredGithubRepos = (() => {
     const query = searchQuery.trim().toLowerCase();
@@ -221,6 +230,8 @@ function DashboardContent() {
   const handleAnalyze = async (repo: any) => {
     setActionError(null);
     setAnalyzingRepoId(repo.id.toString());
+    setSlowAnalyze(false);
+    const slowTimer = setTimeout(() => setSlowAnalyze(true), 5000);
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -251,6 +262,7 @@ function DashboardContent() {
       });
 
       if (response.ok) {
+        setApiStatus("online");
         const result = await response.json();
         setShowImportModal(false);
         fetchScannedRepos();
@@ -262,8 +274,11 @@ function DashboardContent() {
       }
     } catch (e: any) {
       console.error(e);
+      if (e instanceof ApiUnreachableError) setApiStatus("offline");
       setActionError(e instanceof ApiUnreachableError ? e.message : "The scan could not start. Check your connection and try again.");
     } finally {
+      clearTimeout(slowTimer);
+      setSlowAnalyze(false);
       setAnalyzingRepoId(null);
     }
   };
@@ -1255,11 +1270,22 @@ if (loading) {
                 {analyzingRepoId === 'custom' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : null}
-                {resolvingUrl || analyzingRepoId !== null ? "Preparing scan..." : "Analyze Repository"}
+                {resolvingUrl || analyzingRepoId !== null ? (slowAnalyze ? "Waking up the server..." : "Preparing scan...") : "Analyze Repository"}
               </Button>
             </div>
 
-            {actionError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{actionError}</p>}
+            {apiStatus === "offline" && !actionError && analyzingRepoId === null && (
+              <div role="status" className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <span>The scanning server isn&apos;t reachable right now. You can still browse your repositories; scans will start once it&apos;s back.</span>
+                <button type="button" onClick={() => checkApi(true)} className="shrink-0 font-semibold text-amber-900 underline cursor-pointer">Check again</button>
+              </div>
+            )}
+            {actionError && (
+              <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                <span>{actionError}</span>
+                <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss" className="shrink-0 text-rose-700 hover:text-rose-900 cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+            )}
             <div className="border-t border-border pt-4 flex-1 flex flex-col min-h-0">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Your GitHub Repositories{!session?.provider_token ? " (public only)" : ""}</span>
@@ -1362,7 +1388,7 @@ if (loading) {
                         ) : (
                           <Play className="w-3 h-3" />
                         )}
-                        {analyzingRepoId === repo.id.toString() ? "Queuing..." : "Analyze"}
+                        {analyzingRepoId === repo.id.toString() ? (slowAnalyze ? "Waking server..." : "Queuing...") : "Analyze"}
                       </Button>
                     </div>
                   ))

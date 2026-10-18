@@ -22,8 +22,37 @@ export class ApiUnreachableError extends Error {}
 
 export function apiUnreachableMessage(): string {
   return isApiMisconfigured()
-    ? "The CodeForge server address isn't configured for this site yet. Please try again later."
+    ? "Scanning is unavailable: the CodeForge server address isn't configured for this site yet."
     : "The CodeForge server isn't responding. It may be starting up, so try again in a moment.";
+}
+
+export type ApiStatus = "checking" | "online" | "offline";
+
+let warmUp: Promise<ApiStatus> | null = null;
+
+// Pings the backend once per page load. Free-tier hosts sleep when idle and
+// take up to a minute to wake, so starting early hides most of that delay
+// from the first real request. Reuses the in-flight ping on repeat calls.
+export function warmUpApi(force = false): Promise<ApiStatus> {
+  if (warmUp && !force) return warmUp;
+  warmUp = (async () => {
+    if (isApiMisconfigured()) {
+      console.error("NEXT_PUBLIC_API_URL must be the backend's public https URL on a hosted site.");
+      return "offline";
+    }
+    try {
+      const response = await apiFetch(getApiUrl("/health"), {}, { retries: 1, timeoutMs: 75000 });
+      return response.ok ? "online" : "offline";
+    } catch {
+      // Distinguish a down server from a CORS rejection for the developer.
+      const reachable = await fetch(getApiUrl("/health"), { mode: "no-cors" }).then(() => true, () => false);
+      console.error(reachable
+        ? `The backend is up but rejects ${window.location.origin}. Add it to the backend's ALLOWED_ORIGINS.`
+        : "The backend did not respond. Check that it is deployed and NEXT_PUBLIC_API_URL points to it.");
+      return "offline";
+    }
+  })();
+  return warmUp;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -35,7 +64,8 @@ export async function apiFetch(input: string, init: RequestInit = {}, options: {
   if (isApiMisconfigured()) throw new ApiUnreachableError(apiUnreachableMessage());
   const method = (init.method || "GET").toUpperCase();
   const retries = options.retries ?? (method === "GET" ? 3 : 1);
-  const timeoutMs = options.timeoutMs ?? 30000;
+  // Long enough for a sleeping free-tier server to finish waking up.
+  const timeoutMs = options.timeoutMs ?? 75000;
   for (let attempt = 0; ; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
