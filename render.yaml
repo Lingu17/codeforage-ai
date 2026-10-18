@@ -1,0 +1,32 @@
+# Render Blueprint for the CodeForge AI backend (FastAPI).
+# Deploy: https://render.com/deploy?repo=https://github.com/Lingu17/codeforage-ai
+# Values marked `sync: false` are requested privately in the Render dashboard.
+services:
+  - type: web
+    name: codeforage-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: https://codeforage-ai.vercel.app
+      - key: SUPABASE_URL
+        value: https://wgnkoizbmmqlkjriwfwx.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        sync: false
+      - key: GEMINI_AI_MODEL
+        sync: false
