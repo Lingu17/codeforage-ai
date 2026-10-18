@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { githubUsername, githubOAuthScopes, shouldReconnectGitHub, loadGithubRepositories, publicOrAuthorizedRepository, githubResponseError } from '../src/utils/githubImport.ts';
+import { githubUsername, githubOAuthScopes, shouldReconnectGitHub, loadGithubRepositories, listGithubRepositories, publicOrAuthorizedRepository, githubResponseError } from '../src/utils/githubImport.ts';
 
 test('public sign-in requests no private scope; explicit private reconnect requests repo', () => {
   assert.equal(githubOAuthScopes(null), undefined);
@@ -104,4 +104,44 @@ test('private URL uses only supplied provider authorization after anonymous 404'
 test('private URL without authorization fails; hostile URL makes no request', async () => {
   await assert.rejects(publicOrAuthorizedRepository('https://github.com/owner/private', null, async () => new Response(null, {status: 404})), /private repositories require/);
   await assert.rejects(publicOrAuthorizedRepository('https://credential@github.com/owner/repo', null, () => assert.fail('network')), /Enter a GitHub/);
+});
+
+test('direct listing calls GitHub with the provider token and paginates', async () => {
+  const calls = [];
+  const page = n => Array.from({length: n}, (_, i) => ({id: calls.length * 1000 + i + 1, name: 'r', full_name: 'o/r', private: false}));
+  const repos = await listGithubRepositories('https://backend/api/repos/github', {access_token: 'session', provider_token: 'provider'}, async (url, options) => {
+    calls.push(url);
+    assert.ok(url.startsWith('https://api.github.com/user/repos'));
+    assert.equal(options.headers.Authorization, 'Bearer provider');
+    return Response.json(page(calls.length === 1 ? 100 : 3));
+  });
+  assert.equal(calls.length, 2);
+  assert.equal(repos.length, 103);
+});
+
+test('direct listing without provider token lists public repos and never contacts the backend', async () => {
+  const session = {access_token: 'session', user: {app_metadata: {provider: 'github'}, user_metadata: {user_name: 'owner'}}};
+  await listGithubRepositories('https://backend/repos', session, async (url, options) => {
+    assert.ok(url.startsWith('https://api.github.com/users/owner/repos'));
+    assert.equal(options.headers.Authorization, undefined);
+    return Response.json([]);
+  });
+});
+
+test('stale provider token falls back to the public list', async () => {
+  const session = {access_token: 'session', provider_token: 'stale', user: {app_metadata: {provider: 'github'}, user_metadata: {user_name: 'owner'}}};
+  const repos = await listGithubRepositories('https://backend/repos', session, async (url) => url.includes('/user/repos')
+    ? new Response('', {status: 401})
+    : Response.json([{id: 1, name: 'r', full_name: 'owner/r', private: false}]));
+  assert.equal(repos.length, 1);
+});
+
+test('network failure to GitHub falls back to the backend, then reports a friendly error', async () => {
+  const session = {access_token: 'session', provider_token: 'provider'};
+  const viaBackend = await listGithubRepositories('https://backend/repos', session, async (url) => {
+    if (url.startsWith('https://api.github.com')) throw new TypeError('Failed to fetch');
+    return Response.json([{id: 1, name: 'r', full_name: 'o/r', private: true}]);
+  });
+  assert.equal(viaBackend.length, 1);
+  await assert.rejects(listGithubRepositories('https://backend/repos', session, async () => { throw new TypeError('Failed to fetch'); }), /GitHub could not be reached/);
 });

@@ -6,8 +6,8 @@ import { createClient } from "@/utils/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RagCoverage } from "@/components/RagCoverage";
 import { RecentScanActivity } from "@/components/RecentScanActivity";
-import { getApiUrl } from "@/utils/api";
-import { loadGithubRepositories, githubUsername, publicOrAuthorizedRepository, GitHubImportError, githubResponseError } from "@/utils/githubImport";
+import { getApiUrl, apiFetch, ApiUnreachableError } from "@/utils/api";
+import { listGithubRepositories, githubUsername, publicOrAuthorizedRepository, GitHubImportError, githubResponseError } from "@/utils/githubImport";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,6 +52,13 @@ function DashboardContent() {
   const [githubLoadError, setGithubLoadError] = useState<GitHubImportError | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [loadingGithubRepos, setLoadingGithubRepos] = useState(false);
+
+  const filteredGithubRepos = (() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return githubRepos;
+    return githubRepos.filter(repo => repo.full_name.toLowerCase().includes(query)
+      || (typeof repo.description === "string" && repo.description.toLowerCase().includes(query)));
+  })();
 
   useEffect(() => {
     if (!showImportModal) return;
@@ -131,7 +138,7 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(getApiUrl("/api/repos"), { headers });
+      const res = await apiFetch(getApiUrl("/api/repos"), { headers });
       if (res.ok) {
         const data = await res.json();
         setScannedRepos(data);
@@ -150,15 +157,21 @@ function DashboardContent() {
   }, [supabase]);
 
   const fetchGithubRepos = useCallback(async () => {
-    setLoadingGithubRepos(true);
     setGithubLoadError(null);
-    setGithubRepos([]);
+    // Show the last list instantly, then refresh it in the background.
+    let cached: any[] | null = null;
+    try { cached = JSON.parse(sessionStorage.getItem("github_repos_cache") || "null"); } catch { /* storage unavailable */ }
+    if (Array.isArray(cached) && cached.length) setGithubRepos(cached);
+    else setLoadingGithubRepos(true);
     try {
       const { data } = await supabase.auth.getSession();
       setSession(data.session);
-      setGithubRepos(await loadGithubRepositories(getApiUrl("/api/repos/github"), data.session));
+      const repositories = await listGithubRepositories(getApiUrl("/api/repos/github"), data.session);
+      setGithubRepos(repositories);
+      try { sessionStorage.setItem("github_repos_cache", JSON.stringify(repositories)); } catch { /* storage unavailable */ }
     } catch (error) {
-      setGithubLoadError(error instanceof GitHubImportError ? error : new GitHubImportError("Could not reach CodeForge. Check your connection and try again."));
+      if (!(Array.isArray(cached) && cached.length)) setGithubRepos([]);
+      setGithubLoadError(error instanceof GitHubImportError ? error : new GitHubImportError("GitHub could not be reached. Check your connection and try again."));
     } finally {
       setLoadingGithubRepos(false);
     }
@@ -191,7 +204,7 @@ function DashboardContent() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const res = await fetch(getApiUrl(`/api/repos/${repoId}/summary`), { headers });
+      const res = await apiFetch(getApiUrl(`/api/repos/${repoId}/summary`), { headers });
       if (res.ok) {
         const data = await res.json();
         if (selectedRepoIdRef.current === repoId) setRepoSummary(data);
@@ -223,7 +236,7 @@ function DashboardContent() {
       const githubIdToSend = Number(repo.github_id || repo.id);
       if (!Number.isSafeInteger(githubIdToSend) || githubIdToSend <= 0) throw new Error('Invalid GitHub repository identity');
 
-      const response = await fetch(getApiUrl("/api/repos/analyze"), {
+      const response = await apiFetch(getApiUrl("/api/repos/analyze"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -249,7 +262,7 @@ function DashboardContent() {
       }
     } catch (e: any) {
       console.error(e);
-      setActionError("The scan could not start. Check your connection and try again.");
+      setActionError(e instanceof ApiUnreachableError ? e.message : "The scan could not start. Check your connection and try again.");
     } finally {
       setAnalyzingRepoId(null);
     }
@@ -380,8 +393,8 @@ useEffect(() => {
         const user = data.session.user;
         const name = githubUsername(user) || "";
         setUsername(name);
-        await fetchScannedRepos();
         void fetchGithubRepos();
+        await fetchScannedRepos();
       }
       setLoading(false);
     }
@@ -1200,7 +1213,7 @@ if (loading) {
 
       {/* GitHub Repo Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in duration-150" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowImportModal(false); }}>
           <div ref={importDialogRef} role="dialog" aria-modal="true" aria-labelledby="import-repository-title" className="bg-card border border-border rounded-2xl w-full max-w-[95vw] md:max-w-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-4 sm:gap-6 max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
@@ -1227,6 +1240,7 @@ if (loading) {
                   aria-label="GitHub repository URL"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleDirectUrlAnalyze(); } }}
                   className="bg-white border border-border rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground w-full"
                 />
               </div>
@@ -1249,6 +1263,17 @@ if (loading) {
             <div className="border-t border-border pt-4 flex-1 flex flex-col min-h-0">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Your GitHub Repositories{!session?.provider_token ? " (public only)" : ""}</span>
+                <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void fetchGithubRepos()}
+                  disabled={loadingGithubRepos}
+                  aria-label="Refresh repositories"
+                  title="Refresh"
+                  className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingGithubRepos ? "animate-spin" : ""}`} />
+                </button>
                 <div className="relative w-48">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-450" />
                   <input
@@ -1259,7 +1284,11 @@ if (loading) {
                     className="bg-white border border-border rounded-md pl-8 pr-3 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-full text-foreground"
                   />
                 </div>
+                </div>
               </div>
+              {githubLoadError && githubRepos.length > 0 && (
+                <p role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Showing your last loaded list. {githubLoadError.message}</p>
+              )}
 
               {!session?.provider_token && <p className="text-xs text-muted-foreground mb-3">Only public repositories are listed. <a href="/auth/github?reconnect=1" className="text-primary underline">Reconnect GitHub</a> to include private repositories you can access.</p>}
               <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
@@ -1276,7 +1305,7 @@ if (loading) {
                       </div>
                     ))}
                   </div>
-                ) : githubLoadError ? (
+                ) : githubLoadError && githubRepos.length === 0 ? (
                   /* GitHub Load Error State with Retry Button */
                   <div className="py-6 text-center flex flex-col items-center gap-3">
                     <ShieldAlert className="w-8 h-8 text-rose-500 opacity-80" />
@@ -1299,15 +1328,28 @@ if (loading) {
                   <div className="py-8 text-center text-xs text-muted-foreground font-sans">
                     No repositories found for this GitHub account.
                   </div>
+                ) : filteredGithubRepos.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground font-sans">
+                    No repositories match &ldquo;{searchQuery}&rdquo;.
+                  </div>
                 ) : (
-                  githubRepos.filter(repo => repo.name.toLowerCase().includes(searchQuery.toLowerCase())).map((repo) => (
+                  filteredGithubRepos.map((repo) => (
                     <div
                       key={repo.id}
                       className="p-3 bg-slate-50 border border-border rounded-lg flex items-center justify-between hover:border-primary/50 transition-colors"
                     >
                       <div className="truncate pr-4 text-left">
-                        <span className="font-medium text-sm text-foreground truncate block">{repo.name}</span>
+                        <span className="font-medium text-sm text-foreground truncate flex items-center gap-1.5">
+                          {repo.name}
+                          {repo.private && <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">Private</span>}
+                          {repo.fork && <GitFork className="w-3 h-3 text-slate-400" aria-label="Fork" />}
+                        </span>
                         <span className="text-[10px] text-muted-foreground line-clamp-1">{repo.description || "No description."}</span>
+                        <span className="text-[10px] text-slate-500 flex items-center gap-3 mt-0.5">
+                          {repo.language && <span>{repo.language}</span>}
+                          {typeof repo.stargazers_count === "number" && <span className="flex items-center gap-0.5"><Star className="w-2.5 h-2.5" />{repo.stargazers_count}</span>}
+                          {repo.updated_at && <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>}
+                        </span>
                       </div>
                       <Button
                         size="sm"

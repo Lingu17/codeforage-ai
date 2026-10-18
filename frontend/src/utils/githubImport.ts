@@ -92,3 +92,58 @@ export async function publicOrAuthorizedRepository(input: string, providerToken?
   if (!response.ok) throw await githubResponseError(response);
   return response.json();
 }
+
+type RepoSession = { access_token: string; provider_token?: string | null; user?: GitHubUser } | null;
+
+function validRepositoryList(repositories: unknown): repositories is { id: number; name: string; full_name: string; private: boolean }[] {
+  return Array.isArray(repositories) && repositories.every(repo => repo
+    && Number.isSafeInteger(repo.id) && repo.id > 0
+    && typeof repo.name === "string" && repo.name
+    && typeof repo.full_name === "string" && repo.full_name
+    && typeof repo.private === "boolean");
+}
+
+// Lists repositories straight from GitHub in the browser. GitHub's API allows
+// CORS, so the list loads even while the CodeForge backend is cold or offline.
+export async function loadGithubRepositoriesDirect(session: RepoSession, request: typeof fetch = fetch) {
+  if (!session?.access_token) throw new GitHubImportError("Your CodeForge session expired. Sign in again.");
+  const name = githubUsername(session.user);
+  if (!name && !session.provider_token) throw new GitHubImportError("GitHub username is unavailable. Reconnect GitHub, or import a public repository by URL.", true);
+  const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
+  if (session.provider_token) headers.Authorization = `Bearer ${session.provider_token}`;
+  const base = session.provider_token
+    ? "https://api.github.com/user/repos?affiliation=owner,collaborator,organization_member"
+    : `https://api.github.com/users/${encodeURIComponent(name!)}/repos?type=owner`;
+  const repositories: unknown[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const response = await request(`${base}&sort=updated&per_page=100&page=${page}`, { headers });
+    if (!response.ok) {
+      // A stale provider token should not hide the public list.
+      if (response.status === 401 && session.provider_token && name) {
+        return loadGithubRepositoriesDirect({ ...session, provider_token: null }, request);
+      }
+      throw await githubResponseError(response);
+    }
+    const batch = await response.json().catch(() => null);
+    if (!validRepositoryList(batch)) throw new GitHubImportError("GitHub returned an invalid repository list. Try again later.");
+    repositories.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return repositories as { id: number; name: string; full_name: string; private: boolean }[];
+}
+
+// Prefer GitHub directly (fast, no backend cold start); fall back to the
+// CodeForge backend proxy when GitHub can't be reached from the browser.
+export async function listGithubRepositories(apiUrl: string, session: RepoSession, request: typeof fetch = fetch) {
+  try {
+    return await loadGithubRepositoriesDirect(session, request);
+  } catch (directError) {
+    if (directError instanceof GitHubImportError) throw directError;
+    try {
+      return await loadGithubRepositories(apiUrl, session, request);
+    } catch (backendError) {
+      if (backendError instanceof GitHubImportError) throw backendError;
+      throw new GitHubImportError("GitHub could not be reached. Check your connection and try again.");
+    }
+  }
+}
