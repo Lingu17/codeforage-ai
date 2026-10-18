@@ -8,6 +8,10 @@
 </p>
 
 <p align="center">
+  <a href="https://codeforage-ai.vercel.app"><img src="https://img.shields.io/badge/Live%20demo-Open%20CodeForge%20AI-7c3aed?style=for-the-badge" alt="Open the live CodeForge AI demo" /></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/Lingu17/codeforage-ai/actions/workflows/ci.yml"><img src="https://github.com/Lingu17/codeforage-ai/actions/workflows/ci.yml/badge.svg?branch=main" alt="Database, backend, and frontend verification" /></a>
   <img src="https://img.shields.io/badge/Next.js-16-111827?style=flat-square" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/FastAPI-Python-009688?style=flat-square" alt="FastAPI backend" />
