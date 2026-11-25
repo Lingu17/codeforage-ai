@@ -4,7 +4,7 @@ jobs:
   database:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: docker compose -f compose.db-test.yml up -d --wait
       - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /backend/migration_v8.sql
       - run: docker compose -f compose.db-test.yml exec -T db-test psql -U postgres -d codeforge_test -v ON_ERROR_STOP=1 -f /backend/migration_v8.sql
@@ -19,8 +19,8 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
           cache: pip
@@ -40,8 +40,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-only
       NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
